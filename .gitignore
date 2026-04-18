@@ -1,0 +1,26 @@
+# macOS metadata
+.DS_Store
+**/.DS_Store
+
+# Python caches and local environments
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Local secrets/config
+.env
+.env.*
+
+# Generated or personal session data.
+sessions/
+
+# Generated reports and traces outside sessions
+*.csv
+*.jsonl
+report.html
+
+# Local audio library; keep the tracks directory placeholder.
+web_session_app/static/audio/tracks/**
+!web_session_app/static/audio/tracks/
+!web_session_app/static/audio/tracks/.gitkeep

@@ -1,0 +1,6 @@
+{
+  "id": "debug",
+  "title": "Debugging",
+  "description": "Live EEG diagnostics: waveform, spectrogram, PSD, band power, signal quality. Start/stop recording.",
+  "version": "1.0"
+}

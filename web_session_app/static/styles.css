@@ -1,0 +1,318 @@
+:root {
+  --bg:        #0d0d14;
+  --panel:     #13131e;
+  --border:    #252535;
+  --text:      #c4c4d4;
+  --muted:     #55556a;
+  --sidebar:   #0f0f1a;
+  --good:      #44cc66;
+  --fair:      #ddaa33;
+  --poor:      #cc4444;
+  --accent:    #5577ee;
+  --wave:      #4488ff;
+
+  --delta:   #7777dd;
+  --theta:   #55bb88;
+  --alpha:   #f0cc44;
+  --smr:     #f08030;
+  --beta:    #e05050;
+  --hibeta:  #cc55dd;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: "SF Mono", "Fira Code", ui-monospace, monospace;
+  font-size: 13px;
+  height: 100vh;
+  overflow: hidden;
+}
+
+#app {
+  display: flex;
+  height: 100vh;
+}
+
+/* ── Icon strip ────────────────────────────────────────────────────────── */
+
+#iconStrip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 0;
+  width: 42px;
+  min-width: 42px;
+  background: var(--sidebar);
+  border-right: 1px solid var(--border);
+  flex-shrink: 0;
+  z-index: 30;
+}
+
+.strip-btn {
+  width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  background: none; border: none; cursor: pointer;
+  color: var(--muted); border-radius: 5px;
+  transition: color 0.12s, background 0.12s;
+  padding: 0;
+}
+.strip-btn:hover  { color: var(--text); background: #1e1e30; }
+.strip-btn.active { color: var(--text); background: #252540; }
+.strip-btn svg    { display: block; }
+
+/* ── Slide panel (settings / program selector) ─────────────────────────── */
+
+.slide-panel {
+  display: flex;
+  flex-direction: column;
+  width: 200px;
+  min-width: 200px;
+  background: var(--sidebar);
+  border-right: 1px solid var(--border);
+  flex-shrink: 0;
+  overflow: hidden;
+  transition: width 0.18s ease, min-width 0.18s ease;
+  z-index: 20;
+}
+.slide-panel.closed {
+  width: 0;
+  min-width: 0;
+}
+
+.slide-content {
+  flex-direction: column;
+  gap: 0;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.slide-heading {
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em;
+  color: var(--muted); padding: 12px 12px 6px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.slide-section {
+  display: flex; flex-direction: column; gap: 5px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.slide-label {
+  font-size: 10px; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.1em;
+}
+.slide-footer {
+  margin-top: auto; padding: 10px 12px;
+  border-top: 1px solid var(--border);
+  display: flex; flex-direction: column; gap: 4px;
+}
+
+/* Program list in slide panel */
+.slide-prog-list {
+  display: flex; flex-direction: column; padding: 6px 0;
+}
+.slide-prog-item {
+  padding: 8px 12px; cursor: pointer;
+  border-left: 2px solid transparent;
+  transition: background 0.1s;
+}
+.slide-prog-item:hover  { background: #1a1a28; border-left-color: var(--border); }
+.slide-prog-item.active { background: #1e1e30; border-left-color: var(--accent); }
+.slide-prog-name { font-size: 12px; color: var(--text); }
+.slide-prog-desc { font-size: 10px; color: var(--muted); margin-top: 2px; line-height: 1.4; }
+
+.nf-status {
+  font-size: 10px; padding: 4px 12px 8px; display: block;
+}
+.nf-status.running      { color: var(--poor); }
+.nf-status.calibrated   { color: var(--good); }
+.nf-status.calibrating  { color: var(--fair); }
+.nf-status.ready        { color: var(--good); }
+.nf-status.uncalibrated { color: var(--muted); }
+
+/* ── Buttons ────────────────────────────────────────────────────────────── */
+
+button {
+  font: inherit;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px 10px;
+  background: #1a1a28;
+  color: var(--text);
+  text-align: left;
+  transition: background 0.1s, border-color 0.1s, color 0.1s;
+}
+button:hover { background: #22223a; border-color: #3a3a55; }
+
+.btn-primary  { border-color: var(--accent); color: var(--accent); }
+.btn-secondary { border-color: #555; color: #aaa; }
+.btn-secondary.btn-active { background: #2a3a2a; border-color: #6a6; color: #8c8; }
+.btn-record   { border-color: var(--poor); color: var(--poor); }
+.btn-record.active { background: var(--poor); color: #fff; border-color: var(--poor); }
+
+.state-btn { background: #1a1a28; }
+.state-btn[data-state="closed"],
+.state-btn[data-state="relaxed"] {
+  background: #1a2a1a;
+  border-color: var(--good);
+  color: var(--good);
+}
+.state-btn[data-state="clenching"] {
+  background: #2a1a1a;
+  border-color: var(--poor);
+  color: var(--poor);
+}
+
+.btn-toggle.active { background: #22233a; border-color: var(--accent); color: var(--accent); }
+
+/* ── Channel buttons ────────────────────────────────────────────────────── */
+
+#channelBtns {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+}
+#channelBtns button {
+  padding: 4px 2px;
+  text-align: center;
+  font-size: 11px;
+}
+#channelBtns button.active { background: #22233a; border-color: var(--accent); color: var(--accent); }
+
+/* ── Connection badge ───────────────────────────────────────────────────── */
+
+.conn-badge {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 2px 6px;
+  border-radius: 3px;
+  display: inline-block;
+}
+.conn-badge.disconnected { background: #2a1a1a; color: var(--poor); }
+.conn-badge.scanning     { background: #2a2a1a; color: var(--fair); }
+.conn-badge.connected    { background: #1a2a1a; color: var(--good); }
+#statusMsg { color: var(--muted); font-size: 11px; word-break: break-word; }
+
+/* ── Main ─────────────────────────────────────────────────────────────────── */
+
+#main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+}
+
+#trainingPanel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+/* ── Slider ────────────────────────────────────────────────────────────── */
+
+input[type="range"] {
+  accent-color: var(--accent);
+  height: 3px;
+  cursor: pointer;
+}
+
+/* ── Panels ─────────────────────────────────────────────────────────────── */
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 8px 10px;
+  min-width: 0;
+}
+.panel-title {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.muted { color: var(--muted); }
+
+canvas { width: 100%; height: auto; display: block; }
+
+/* ── Band bars ──────────────────────────────────────────────────────────── */
+
+#dbgBandsPanel { display: flex; flex-direction: column; gap: 0; }
+
+.band-row {
+  display: grid;
+  grid-template-columns: 54px 1fr 42px 70px;
+  align-items: center;
+  gap: 6px;
+}
+.band-name { font-size: 11px; color: var(--muted); }
+.bar-track {
+  height: 14px;
+  background: #1a1a28;
+  border-radius: 3px;
+  overflow: hidden;
+  position: relative;
+}
+.bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.25s;
+  min-width: 2px;
+}
+.band-pct { font-size: 12px; text-align: right; font-variant-numeric: tabular-nums; }
+.band-spark { display: block; }
+
+/* ── Diagnostics ─────────────────────────────────────────────────────────── */
+
+.diag-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 3px 0;
+  border-bottom: 1px solid var(--border);
+}
+.diag-k { color: var(--muted); font-size: 11px; }
+.diag-v { font-size: 12px; font-variant-numeric: tabular-nums; }
+.diag-v.good { color: var(--good); }
+.diag-v.fair { color: var(--fair); }
+.diag-v.poor { color: var(--poor); }
+
+.diag-guide { border-top: 1px solid var(--border); padding-top: 8px; }
+.guide-title {
+  font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.1em; color: var(--muted); margin-bottom: 6px;
+}
+.guide-item { display: flex; align-items: baseline; gap: 6px; padding: 2px 0; font-size: 11px; color: var(--muted); }
+.guide-band { font-size: 14px; font-weight: 700; min-width: 16px; }
+
+/* ── Rec dot ─────────────────────────────────────────────────────────────── */
+
+.rec-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--muted);
+  display: inline-block;
+}
+.rec-dot.active { background: var(--poor); animation: pulse 1s infinite; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+/* ── Blink button flash ──────────────────────────────────────────────────── */
+
+.btn-event {
+  font: inherit; cursor: pointer; padding: 6px 10px;
+  border: 1px solid #cc9933; border-radius: 4px;
+  background: #1a1a10; color: #ddaa33;
+  transition: background 0.08s;
+}
+.btn-event:hover  { background: #2a2a18; }
+.btn-event.flash  { background: #ddaa33; color: #000; }
+
+/* Sessions panel styles → session_view/sessions.css */
+/* Program panel styles → program_view/programs.css */

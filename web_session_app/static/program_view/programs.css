@@ -1,0 +1,431 @@
+/* ── Program Panel Layout ─────────────────────────────────────────────────── */
+
+#trainingPanel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: 6px;
+}
+
+.program-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 8px 12px;
+}
+
+.program-header select,
+#nfTrackRow select,
+.nf-scene-select,
+#nfTrackSelect {
+  font: inherit;
+  background: #1a1a28;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.program-header select {
+  flex: 1;
+}
+
+.program-header select:focus,
+#nfTrackRow select:focus,
+.nf-scene-select:focus,
+#nfTrackSelect:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+#nfStatusText {
+  font-size: 11px;
+  color: var(--muted);
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+#nfStatusText.calibrated   { color: var(--good); }
+#nfStatusText.uncalibrated { color: var(--poor); }
+#nfStatusText.running      { color: var(--fair); animation: pulse 1s infinite; }
+#nfStatusText.calibrating  { color: var(--accent); }
+
+.program-body {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(320px, 1fr);
+  gap: 6px;
+  flex: 1;
+  min-height: 0;
+}
+
+.program-main {
+  position: relative;
+  background: #05060a;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  overflow: hidden;
+  min-height: 480px;
+}
+
+#nfCircleCanvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.nf-viz-head {
+  position: absolute;
+  top: 14px;
+  left: 16px;
+  right: 16px;
+  pointer-events: none;
+}
+
+.nf-viz-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: rgba(235, 239, 247, 0.92);
+}
+
+.nf-viz-subtitle {
+  margin-top: 4px;
+  max-width: 70%;
+  font-size: 11px;
+  line-height: 1.35;
+  color: rgba(201, 206, 219, 0.62);
+}
+
+.nf-corner-label {
+  position: absolute;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: ui-monospace, monospace;
+  padding: 6px 8px;
+  pointer-events: none;
+  color: rgba(214, 217, 227, 0.78);
+}
+
+.nf-label-tl { top: 52px; left: 8px; }
+.nf-label-tr { top: 8px; right: 8px; text-align: right; }
+.nf-label-bl { bottom: 8px; left: 8px; }
+.nf-label-br { bottom: 8px; right: 8px; text-align: right; }
+
+.calibration-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(13, 13, 20, 0.88);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  z-index: 10;
+  border-radius: 5px;
+}
+
+.cal-title {
+  font-size: 13px;
+  color: var(--text);
+  letter-spacing: 0.06em;
+}
+
+.cal-progress-track {
+  width: 70%;
+  height: 8px;
+  background: #1a1a28;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.cal-progress-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--accent);
+  border-radius: 4px;
+  transition: width 0.3s;
+}
+
+.cal-timer {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.program-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.nf-section {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 8px 10px;
+}
+
+.nf-section-title {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.nf-toggles {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+#nfTrackRow {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.nf-control + .nf-control {
+  margin-top: 8px;
+}
+
+.nf-control-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 11px;
+  color: var(--text);
+}
+
+.nf-control-value {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.nf-control-help,
+.nf-scene-help {
+  margin-top: 4px;
+  font-size: 10px;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+.nf-scene-select,
+#nfTrackSelect {
+  width: 100%;
+}
+
+#nfSettingsSection input[type=range],
+#nfSceneSection input[type=range] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  margin-top: 6px;
+  background: #2a2a3e;
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+
+#nfSettingsSection input[type=range]::-webkit-slider-thumb,
+#nfSceneSection input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+}
+
+#nfSettingsSection input[type=range]::-moz-range-thumb,
+#nfSceneSection input[type=range]::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border: none;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+}
+
+.nf-preview-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.nf-preview-slider-wrap {
+  position: relative;
+  margin-top: 6px;
+}
+
+.nf-preview-slider-wrap input[type=range] {
+  margin-top: 0;
+}
+
+.nf-preview-threshold {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  left: 50%;
+  width: 2px;
+  transform: translateX(-50%);
+  border-radius: 1px;
+  background: rgba(255, 255, 255, 0.45);
+  pointer-events: none;
+}
+
+.nf-tbar-row {
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  gap: 4px 8px;
+  padding: 5px 0;
+  align-items: center;
+}
+
+.nf-tbar-name {
+  grid-row: 1 / span 2;
+  font-size: 11px;
+}
+
+.nf-tbar-track {
+  height: 12px;
+  background: #1a1a28;
+  border-radius: 3px;
+  position: relative;
+}
+
+.nf-tbar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.2s, background 0.2s;
+  max-width: 100%;
+}
+
+.nf-tbar-threshold {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 2px;
+  background: rgba(255, 255, 255, 0.35);
+  left: 50%;
+  transform: translateX(-50%);
+  border-radius: 1px;
+}
+
+.nf-tbar-value,
+.nf-tbar-meta {
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.nf-tbar-value { color: var(--text); }
+.nf-tbar-meta  { color: var(--muted); }
+
+.nf-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.nf-stats-grid-wide {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.nf-stat {
+  background: #1a1a28;
+  border-radius: 4px;
+  padding: 6px 8px;
+}
+
+.nf-stat-k {
+  font-size: 9px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.nf-stat-v {
+  font-size: 15px;
+  font-weight: 700;
+  margin-top: 2px;
+  font-variant-numeric: tabular-nums;
+}
+
+@keyframes rewardFlash {
+  0%   { border-color: var(--good); }
+  50%  { border-color: var(--good); box-shadow: 0 0 18px rgba(68, 204, 102, 0.35); }
+  100% { border-color: var(--border); box-shadow: none; }
+}
+
+.program-main.reward-flash {
+  animation: rewardFlash 0.5s ease-out;
+}
+
+@media (max-width: 1100px) {
+  .program-body {
+    grid-template-columns: 1fr;
+  }
+
+  .program-main {
+    min-height: 420px;
+  }
+
+  .nf-viz-subtitle {
+    max-width: 100%;
+  }
+}
+
+/* ── In-program notes panel ─────────────────────────────────────────────── */
+
+.nf-note-log {
+  max-height: 130px;
+  overflow-y: auto;
+  background: #0d0d14;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 5px 7px;
+  margin-bottom: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-height: 32px;
+}
+
+.nf-note-entry {
+  font-size: 11px;
+  color: var(--text);
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.nf-note-entry:not(:last-child) {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 3px;
+}
+
+.nf-note-input {
+  width: 100%;
+  background: #1a1a28;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text);
+  font: inherit;
+  font-size: 11px;
+  padding: 5px 7px;
+  outline: none;
+  transition: border-color 0.1s;
+}
+.nf-note-input:focus { border-color: var(--accent); }
+.nf-note-input::placeholder { color: var(--muted); }
+

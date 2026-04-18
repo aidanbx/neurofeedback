@@ -1,0 +1,253 @@
+/* ── Sessions panel ──────────────────────────────────────────────────────── */
+
+.btn-tiny {
+  font: inherit; cursor: pointer; font-size: 10px; padding: 2px 8px;
+  background: #1a1a28; border: 1px solid var(--border);
+  border-radius: 3px; color: var(--muted);
+}
+.btn-tiny:hover { color: var(--text); border-color: #3a3a55; }
+.btn-tiny:disabled { opacity: 0.4; cursor: default; }
+.btn-tiny.btn-destructive { color: var(--poor); }
+.btn-tiny.btn-destructive:hover { border-color: var(--poor); }
+.btn-tiny.btn-save { color: var(--good); }
+.btn-tiny.btn-save:hover { border-color: var(--good); }
+.btn-tiny.btn-close { font-size: 14px; padding: 2px 10px; color: var(--text); }
+.btn-tiny.btn-close:hover { color: var(--poor); border-color: var(--poor); }
+
+/* ── Layout ────────────────────────────────────────────────────────────── */
+
+.sessions-body {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 8px;
+  overflow: hidden;
+}
+
+/* ── Left column: list ─────────────────────────────────────────────────── */
+
+.sessions-list-col {
+  display: flex; flex-direction: column; gap: 4px;
+  min-height: 0; overflow: hidden;
+  border-right: 1px solid var(--border);
+  padding-right: 8px;
+}
+.sessions-list-toolbar {
+  display: flex; gap: 4px; align-items: center; flex-shrink: 0;
+}
+.sessions-list {
+  flex: 1; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 4px;
+}
+
+/* ── Session items ─────────────────────────────────────────────────────── */
+
+.session-item {
+  display: flex; align-items: flex-start; gap: 5px;
+  padding: 7px 8px 7px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: #1a1a28;
+  cursor: default;
+  transition: border-color 0.15s;
+  flex-shrink: 0;
+}
+.session-item:hover { border-color: #3a3a55; }
+.session-item.active { border-color: var(--accent); background: #1a1a2e; }
+
+/* Left icon column: star + optional note indicator + optional checkbox */
+.session-item-icons {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  flex-shrink: 0; padding-top: 1px;
+}
+
+.session-star {
+  background: none; border: none; cursor: pointer; padding: 0;
+  font-size: 16px; color: var(--muted); line-height: 1;
+}
+.session-star:hover { color: var(--fair); }
+.session-star.active { color: #f0c040; }
+
+.session-note-ind {
+  display: flex; color: var(--muted); opacity: 0.6; line-height: 1;
+}
+
+.session-checkbox {
+  margin-top: 1px; accent-color: var(--accent); cursor: pointer;
+}
+
+/* Info column */
+.session-item-info { flex: 1; min-width: 0; cursor: pointer; }
+.session-item-name {
+  font-size: 12px; font-weight: 500; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.session-item-date { font-size: 10px; color: var(--muted); margin-top: 1px; }
+.session-item-bottom {
+  display: flex; align-items: center; gap: 6px; margin-top: 3px;
+}
+.session-item-dur { font-size: 10px; color: var(--muted); }
+
+.session-status {
+  display: inline-block; font-size: 9px; padding: 1px 4px;
+  border-radius: 2px; text-transform: uppercase;
+}
+.status-done    { background: #1a2a1a; color: var(--good); }
+.status-running { background: #2a2a1a; color: var(--fair); }
+.status-error   { background: #2a1a1a; color: var(--poor); }
+.status-not_run { background: #1e1e2e; color: var(--muted); }
+
+/* ── Right column: session detail ──────────────────────────────────────── */
+
+.sessions-detail-view {
+  overflow-y: auto;
+  border-radius: 4px;
+}
+.sessions-detail-placeholder {
+  display: flex; align-items: center; justify-content: center;
+  height: 100%; min-height: 120px;
+  color: var(--muted); font-size: 12px;
+  background: #1a1a28; border-radius: 4px;
+}
+.session-detail-wrap {
+  display: flex; flex-direction: column;
+}
+
+/* ── Detail header card ────────────────────────────────────────────────── */
+
+.session-detail-card {
+  padding: 12px 14px 10px;
+  background: #1a1a28;
+  border: 1px solid var(--border);
+  border-radius: 4px 4px 0 0;
+  flex-shrink: 0;
+}
+
+.session-detail-row1 {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 5px;
+}
+.session-detail-name {
+  flex: 1; font-size: 15px; font-weight: 600; color: var(--text);
+}
+.session-detail-icon-actions {
+  display: flex; gap: 8px; align-items: center;
+}
+
+.detail-star {
+  background: none; border: none; cursor: pointer;
+  font-size: 20px; color: var(--muted); padding: 0; line-height: 1;
+}
+.detail-star:hover { color: var(--fair); }
+.detail-star.active { color: #f0c040; }
+
+.detail-note-btn {
+  background: none; border: none; cursor: pointer;
+  color: var(--muted); padding: 1px; line-height: 1;
+  display: flex; align-items: center;
+}
+.detail-note-btn:hover { color: var(--text); }
+.detail-note-btn svg { display: block; }
+
+.session-detail-row2 {
+  display: flex; align-items: center; gap: 8px;
+}
+.session-detail-meta { flex: 1; font-size: 11px; color: var(--muted); }
+.detail-archive-btn { font-size: 9px; padding: 1px 6px; opacity: 0.7; }
+.detail-archive-btn:hover { opacity: 1; }
+
+/* ── Note section (fixed height, scrollable inside) ─────────────────────── */
+
+.session-note-section {
+  height: 190px;
+  display: flex; flex-direction: column;
+  background: #13131e;
+  border: 1px solid var(--border); border-top: none;
+  flex-shrink: 0;
+}
+
+.note-section-header {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 10px;
+  border-bottom: 1px solid var(--border);
+  background: #1a1a28;
+  flex-shrink: 0;
+}
+.note-section-label {
+  flex: 1; font-size: 10px; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.06em;
+}
+
+.note-body {
+  flex: 1; overflow-y: auto; padding: 8px 10px;
+}
+.note-text {
+  margin: 0; font: inherit; font-size: 11px; color: var(--text);
+  white-space: pre-wrap; word-break: break-word; line-height: 1.6;
+}
+.note-empty-center {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 8px; cursor: pointer;
+}
+.note-empty-center:hover svg { opacity: 0.6 !important; }
+.note-empty-label {
+  font-size: 11px; color: var(--muted);
+}
+
+.note-editor {
+  flex: 1; display: block; width: 100%;
+  background: transparent; border: none; outline: none;
+  color: var(--text); font: inherit; font-size: 11px; line-height: 1.6;
+  resize: none; padding: 8px 10px;
+  box-sizing: border-box;
+}
+
+.note-footer {
+  padding: 4px 8px;
+  border-top: 1px solid var(--border);
+  background: #1a1a28;
+  flex-shrink: 0;
+}
+
+/* ── Archive footer ────────────────────────────────────────────────────── */
+
+.session-archive-footer {
+  display: flex; justify-content: flex-end;
+  padding: 8px 10px 4px;
+  flex-shrink: 0;
+}
+
+/* ── Report section ────────────────────────────────────────────────────── */
+
+.session-report-section {
+  border: 1px solid var(--border); border-top: none;
+  border-radius: 0 0 4px 4px; overflow: hidden;
+}
+.report-frame {
+  width: 100%; display: block; border: none;
+  background: var(--bg); min-height: 400px;
+}
+
+/* ── Confirmation popup ────────────────────────────────────────────────── */
+
+.confirm-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 9999;
+}
+.confirm-box {
+  background: #1a1a28; border: 1px solid #3a3a55;
+  border-radius: 6px; padding: 20px 24px;
+  min-width: 260px; max-width: 380px;
+}
+.confirm-msg {
+  font-size: 13px; color: var(--text); margin: 0 0 16px;
+  line-height: 1.5;
+}
+.confirm-btns {
+  display: flex; gap: 8px; justify-content: flex-end;
+}
+
+@media (max-width: 900px) {
+  .sessions-body { grid-template-columns: 1fr; }
+}
