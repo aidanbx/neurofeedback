@@ -1,0 +1,17 @@
+{
+  "name": "eeg-neurofeedback",
+  "version": "0.1.0",
+  "private": true,
+  "main": "electron-dist/main.js",
+  "scripts": {
+    "electron": "tsc -p electron/tsconfig.json && electron .",
+    "dev": "concurrently \"cd frontend && npm run dev\" \"sleep 4 && npm run electron\"",
+    "build:frontend": "cd frontend && npm run build",
+    "build": "npm run build:frontend && tsc -p electron/tsconfig.json"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.0",
+    "electron": "^31.0.0",
+    "typescript": "^5.4.0"
+  }
+}

@@ -4,7 +4,9 @@ import { startPython, stopPython } from './pythonProcess';
 
 const PROJECT_ROOT = path.join(__dirname, '..');
 const BACKEND_PORT = 8765;
-const RENDERER_URL = `http://127.0.0.1:${BACKEND_PORT}`;
+const DEV_MODE = process.env.ELECTRON_DEV === '1';
+// Dev: load Vite dev server (port 3000); prod: backend serves built frontend
+const RENDERER_URL = DEV_MODE ? 'http://127.0.0.1:3000' : `http://127.0.0.1:${BACKEND_PORT}`;
 
 let win: BrowserWindow | null = null;
 

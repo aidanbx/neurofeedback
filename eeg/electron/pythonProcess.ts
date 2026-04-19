@@ -4,6 +4,7 @@ import * as path from 'path';
 let proc: ChildProcess | null = null;
 
 export function startPython(projectRoot: string): void {
+  // __dirname when compiled is electron-dist/, so projectRoot = eeg/
   const backendDir = path.join(projectRoot, 'backend');
   proc = spawn(
     'conda',
