@@ -1,0 +1,136 @@
+"""Three independent audio channels: alpha, theta, and combined beta."""
+from __future__ import annotations
+
+from dataclasses import asdict, dataclass
+
+import numpy as np
+
+from ...contracts import MetricsSnapshot, ProgramOutput
+from ..templates import RewardInhibitRuntime, _quantile
+
+DEFAULT_DSP_RANGE   = 3.0
+DEFAULT_REWARD_PCT  = 65.0
+
+
+@dataclass
+class AlphaThetaBetaPayload:
+    mode:          str
+    drives:        dict[str, float]    # {"alpha": ..., "theta": ..., "beta": ...}
+    thresholds:    dict[str, float]
+    alpha_value:   float
+    theta_value:   float
+    beta_value:    float
+    alpha_clarity: float
+    theta_clarity: float
+    beta_clarity:  float
+    alpha_samples: int
+    theta_samples: int
+    beta_samples:  int
+    alpha_reward_pct: float
+    theta_reward_pct: float
+    beta_reward_pct:  float
+
+
+class AlphaThetaBetaRuntime(RewardInhibitRuntime):
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._alpha_reward_pct = DEFAULT_REWARD_PCT
+        self._theta_reward_pct = DEFAULT_REWARD_PCT
+        self._beta_reward_pct  = DEFAULT_REWARD_PCT
+        self._init_calibration(["Alpha", "Theta", "Beta"])
+
+    @property
+    def program_id(self) -> str:
+        return "alpha_theta_beta"
+
+    def tick(self, snap: MetricsSnapshot, elapsed: float) -> ProgramOutput:
+        alpha = snap.bands.get("Alpha")
+        theta = snap.bands.get("Theta")
+
+        alpha_val = alpha.smoothed if alpha else 0.0
+        theta_val = theta.smoothed if theta else 0.0
+        beta_val  = self._combined_beta_smoothed(snap)
+
+        self._ingest_sample(snap, elapsed, {
+            "Alpha": alpha_val,
+            "Theta": theta_val,
+            "Beta":  beta_val,
+        })
+
+        enough = self._enough_samples()
+        counts = {k: len(v) for k, v in self._calibration.items()}
+
+        if not enough:
+            def _norm(v: float) -> float:
+                r = DEFAULT_DSP_RANGE
+                return float(np.clip((v + r) / (2 * r) * 100, 0, 100))
+            alpha_norm = _norm(alpha_val)
+            theta_norm = _norm(theta_val)
+            beta_norm  = _norm(beta_val)
+            a_thr = 100.0 - self._alpha_reward_pct
+            t_thr = 100.0 - self._theta_reward_pct
+            b_thr = 100.0 - self._beta_reward_pct
+            alpha_clarity = self._clarity_from_range(alpha_norm, a_thr, 0.0, 100.0)
+            theta_clarity = self._clarity_from_range(theta_norm, t_thr, 0.0, 100.0)
+            beta_clarity  = self._clarity_from_range(beta_norm,  b_thr, 0.0, 100.0)
+            mode = "warm_start"
+        else:
+            alpha_vals = [v for _, v in self._calibration["Alpha"]]
+            theta_vals = [v for _, v in self._calibration["Theta"]]
+            beta_vals  = [v for _, v in self._calibration["Beta"]]
+            a_thr = self._threshold_from_target("Alpha", self._alpha_reward_pct)
+            t_thr = self._threshold_from_target("Theta", self._theta_reward_pct)
+            b_thr = self._threshold_from_target("Beta",  self._beta_reward_pct)
+            alpha_clarity = self._clarity_from_range(alpha_val, a_thr, _quantile(alpha_vals, 0.1), _quantile(alpha_vals, 0.9))
+            theta_clarity = self._clarity_from_range(theta_val, t_thr, _quantile(theta_vals, 0.1), _quantile(theta_vals, 0.9))
+            beta_clarity  = self._clarity_from_range(beta_val,  b_thr, _quantile(beta_vals,  0.1), _quantile(beta_vals,  0.9))
+            mode = "rolling"
+
+        payload = AlphaThetaBetaPayload(
+            mode=mode,
+            drives={
+                "alpha": round(alpha_clarity, 4),
+                "theta": round(theta_clarity, 4),
+                "beta":  round(beta_clarity,  4),
+            },
+            thresholds={"alpha": round(a_thr, 4), "theta": round(t_thr, 4), "beta": round(b_thr, 4)},
+            alpha_value=round(alpha_val, 4),
+            theta_value=round(theta_val, 4),
+            beta_value= round(beta_val,  4),
+            alpha_clarity=round(alpha_clarity, 4),
+            theta_clarity=round(theta_clarity, 4),
+            beta_clarity= round(beta_clarity,  4),
+            alpha_samples=counts.get("Alpha", 0),
+            theta_samples=counts.get("Theta", 0),
+            beta_samples= counts.get("Beta",  0),
+            alpha_reward_pct=self._alpha_reward_pct,
+            theta_reward_pct=self._theta_reward_pct,
+            beta_reward_pct= self._beta_reward_pct,
+        )
+
+        status = f"{mode} | α={alpha_clarity:.2f} θ={theta_clarity:.2f} β={beta_clarity:.2f}"
+
+        return ProgramOutput(
+            program_id=self.program_id,
+            elapsed=elapsed,
+            status_text=status,
+            payload=asdict(payload),
+        )
+
+    def set_params(self, params: dict) -> None:
+        super().set_params(params)
+        if "alpha_reward_pct" in params:
+            self._alpha_reward_pct = float(np.clip(params["alpha_reward_pct"], 1.0, 99.0))
+        if "theta_reward_pct" in params:
+            self._theta_reward_pct = float(np.clip(params["theta_reward_pct"], 1.0, 99.0))
+        if "beta_reward_pct" in params:
+            self._beta_reward_pct  = float(np.clip(params["beta_reward_pct"],  1.0, 99.0))
+
+    def get_params(self) -> dict:
+        return {
+            **super().get_params(),
+            "alpha_reward_pct": self._alpha_reward_pct,
+            "theta_reward_pct": self._theta_reward_pct,
+            "beta_reward_pct":  self._beta_reward_pct,
+        }

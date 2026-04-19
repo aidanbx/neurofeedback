@@ -1,0 +1,6 @@
+{
+  "id": "alpha_theta_beta",
+  "title": "Alpha-Theta-Beta Feedback",
+  "description": "Three independent audio channels: alpha, theta, and combined beta (Beta + Hi-Beta). Each drives its own base/clear scene.",
+  "version": "2.0"
+}

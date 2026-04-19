@@ -1,0 +1,6 @@
+{
+  "id": "alpha_feedback",
+  "title": "Alpha Feedback",
+  "description": "Single-scene alpha clarity feedback with rolling theta and beta inhibits.",
+  "version": "2.0"
+}
