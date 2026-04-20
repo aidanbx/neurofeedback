@@ -9,9 +9,11 @@ class EEGWebSocket {
 
   connect() {
     if (this.ws && this.ws.readyState <= WebSocket.OPEN) return;
-    const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-    const host = window.location.host;
-    this.ws = new WebSocket(`${protocol}://${host}/ws/stream`);
+    // From file:// (Electron prod), connect directly to backend
+    const url = window.location.protocol === 'file:'
+      ? 'ws://127.0.0.1:8765/ws/stream'
+      : `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws/stream`;
+    this.ws = new WebSocket(url);
     this.ws.onmessage = (e) => {
       try {
         const msg = JSON.parse(e.data) as StreamMessage;

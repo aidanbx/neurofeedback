@@ -3,10 +3,8 @@ import * as path from 'path';
 import { startPython, stopPython } from './pythonProcess';
 
 const PROJECT_ROOT = path.join(__dirname, '..');
-const BACKEND_PORT = 8765;
 const DEV_MODE = process.env.ELECTRON_DEV === '1';
-// Dev: load Vite dev server (port 3000); prod: backend serves built frontend
-const RENDERER_URL = DEV_MODE ? 'http://127.0.0.1:3000' : `http://127.0.0.1:${BACKEND_PORT}`;
+const DIST_INDEX = path.join(PROJECT_ROOT, 'dist', 'index.html');
 
 let win: BrowserWindow | null = null;
 
@@ -27,17 +25,17 @@ function createWindow() {
     return { action: 'deny' };
   });
 
-  // Wait a moment for uvicorn to start, then load
-  setTimeout(() => {
-    win?.loadURL(RENDERER_URL).catch((e) => {
-      console.error('Failed to load renderer:', e);
-      setTimeout(() => win?.loadURL(RENDERER_URL).catch(console.error), 2000);
-    });
-  }, 2500);
+  if (DEV_MODE) {
+    // Hot-reload via Vite dev server (run `npm run dev` in frontend/ separately)
+    setTimeout(() => win?.loadURL('http://127.0.0.1:3000').catch(console.error), 1000);
+  } else {
+    // Load built static files directly — no web server needed for the UI
+    win?.loadFile(DIST_INDEX).catch(console.error);
+  }
 }
 
 app.whenReady().then(() => {
-  startPython(PROJECT_ROOT);
+  if (!DEV_MODE) startPython(PROJECT_ROOT);
   createWindow();
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();

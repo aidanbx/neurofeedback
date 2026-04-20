@@ -4,7 +4,7 @@
   "private": true,
   "main": "electron-dist/main.js",
   "scripts": {
-    "electron": "tsc -p electron/tsconfig.json && electron .",
+    "electron": "node_modules/.bin/electron .",
     "dev": "concurrently \"cd frontend && npm run dev\" \"sleep 4 && npm run electron\"",
     "build:frontend": "cd frontend && npm run build",
     "build": "npm run build:frontend && tsc -p electron/tsconfig.json"

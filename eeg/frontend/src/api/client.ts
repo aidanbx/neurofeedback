@@ -1,4 +1,5 @@
-const BASE = '/api';
+// In Vite dev mode, /api is proxied. When loaded from file://, go direct to backend.
+const BASE = window.location.protocol === 'file:' ? 'http://127.0.0.1:8765/api' : '/api';
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(BASE + path, {
