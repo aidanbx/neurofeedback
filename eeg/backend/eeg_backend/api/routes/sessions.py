@@ -4,7 +4,6 @@ from __future__ import annotations
 import json
 import re
 import shutil
-from datetime import datetime
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
@@ -66,11 +65,10 @@ async def append_note(body: dict):
     with _app.lock:
         recording   = _app.recorder.recording
         session_id  = _app.recorder.recording_id or body.get("id", "")
-        rec_started = _app.recorder.recording_started_at
+        elapsed     = _app.clock.elapsed_sec()
     if not session_id:
         return {"ok": False, "error": "no active session"}
-    if recording and rec_started is not None:
-        elapsed = (datetime.now() - rec_started).total_seconds()
+    if recording:
         out_dir = SESSIONS / session_id
         out_dir.mkdir(parents=True, exist_ok=True)
         line = json.dumps({"elapsed": round(elapsed, 3), "type": "note", "text": text}) + "\n"
@@ -110,7 +108,7 @@ async def log_event(body: dict):
         if not _app.recorder.recording or not _app.recorder.recording_id:
             return {"ok": False, "error": "not recording"}
         session_id = _app.recorder.recording_id
-        elapsed    = (datetime.now() - _app.recorder.recording_started_at).total_seconds()
+        elapsed    = _app.clock.elapsed_sec()
     out_dir = SESSIONS / session_id
     out_dir.mkdir(parents=True, exist_ok=True)
     line = json.dumps({"elapsed": round(elapsed, 3), **body}) + "\n"

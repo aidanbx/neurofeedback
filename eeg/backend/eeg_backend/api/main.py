@@ -31,6 +31,7 @@ from ..hardware.ble_client import (
 from ..hardware.replay import ReplayClient
 from ..metrics.engine import MetricsEngine
 from ..programs.base import ProgramRuntime
+from ..runtime.clock import LiveSessionClock
 from ..sessions.recorder import SessionRecorder
 from ..sessions.store import PROGRAMS_DIR, SESSIONS
 
@@ -85,6 +86,10 @@ class SessionApp:
         self.latest_program_output: ProgramOutput | None = None
 
         self.recorder        = SessionRecorder()
+        self.clock           = LiveSessionClock(
+            get_sample_index=lambda: self.recorder.record_sample_index,
+            get_wall_anchor=lambda: self.recorder.recording_started_at,
+        )
         self.metrics_engine  = MetricsEngine()
         self.programs        = _load_programs()
         self.active_program_id: str | None = None
@@ -128,7 +133,7 @@ class SessionApp:
             started_at  = self.recorder.recording_started_at
             should_log  = recording and (now - self.recorder.last_metric_monotonic >= METRIC_INTERVAL)
             art_rej     = self.artifact_rejection
-            elapsed     = self.recorder.session_duration_sec()
+            elapsed     = self.clock.elapsed_sec()
             prog_id     = self.active_program_id
 
         frame = compute_frame_metrics(live, channels, CHANNEL, art_rej, ADC_MAX_UV)
@@ -234,7 +239,7 @@ class SessionApp:
         ble_snap    = self.ble.snapshot()
         replay_snap = self.replay.snapshot()
         with self.lock:
-            duration = self.recorder.session_duration_sec()
+            duration = self.clock.elapsed_sec()
             recording = self.recorder.recording
             snap_dict: dict[str, Any] = {}
             if self.latest_snap:
@@ -264,7 +269,7 @@ class SessionApp:
         window_sec = float(np.clip(window_sec, 1.0, 20.0))
 
         with self.lock:
-            duration  = self.recorder.session_duration_sec()
+            duration  = self.clock.elapsed_sec()
             recording = self.recorder.recording
             rec_chans = self.recorder.recorded_channels
             if live_mode or not any(rec_chans):
