@@ -2,5 +2,56 @@
   "id": "alpha_feedback",
   "title": "Alpha Feedback",
   "description": "Single-scene alpha clarity feedback with rolling theta and beta inhibits.",
-  "version": "2.0"
+  "version": "2.0",
+  "runtime": "runtime:AlphaFeedbackRuntime",
+  "frontend_view": "alpha_feedback/view",
+  "required_bands": ["Alpha", "Theta", "Beta", "Hi-Beta"],
+  "audio_scenes": ["main"],
+  "settings_schema": {
+    "calibration_window_sec": {
+      "type": "number",
+      "default": 180,
+      "min": 10,
+      "max": 600,
+      "step": 5,
+      "label": "Calibration window",
+      "description": "Rolling calibration window in seconds."
+    },
+    "clarity_at_threshold": {
+      "type": "number",
+      "default": 0.5,
+      "min": 0.05,
+      "max": 0.95,
+      "step": 0.05,
+      "label": "Threshold clarity",
+      "description": "Clarity value at the reward threshold."
+    },
+    "reward_target_pct": {
+      "type": "number",
+      "default": 65,
+      "min": 40,
+      "max": 85,
+      "step": 1,
+      "label": "Reward rate",
+      "description": "Target percentage of samples expected to reward."
+    },
+    "theta_inhibit_pct": {
+      "type": "number",
+      "default": 15,
+      "min": 5,
+      "max": 35,
+      "step": 1,
+      "label": "Theta inhibit",
+      "description": "Target percentage of theta samples expected to inhibit."
+    },
+    "beta_inhibit_pct": {
+      "type": "number",
+      "default": 15,
+      "min": 5,
+      "max": 35,
+      "step": 1,
+      "label": "Beta inhibit",
+      "description": "Target percentage of beta samples expected to inhibit."
+    }
+  }
 }

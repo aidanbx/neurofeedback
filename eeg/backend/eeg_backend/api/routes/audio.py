@@ -1,14 +1,11 @@
-"""Audio tracks and program discovery routes."""
+"""Audio track routes."""
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from urllib.parse import quote
 
 from fastapi import APIRouter
 from fastapi.responses import FileResponse
-
-from ...sessions.store import PROGRAMS_DIR
 
 router = APIRouter()
 
@@ -28,22 +25,6 @@ async def list_audio_tracks():
                     "url":      f"/audio/tracks/{quote(f.name)}",
                 })
     return tracks
-
-
-@router.get("/programs")
-async def list_programs():
-    programs = []
-    seen: set[str] = set()
-    if PROGRAMS_DIR.is_dir():
-        for d in sorted(PROGRAMS_DIR.iterdir()):
-            if d.is_dir() and (d / "manifest.json").exists():
-                try:
-                    m = json.loads((d / "manifest.json").read_text())
-                    programs.append(m)
-                    seen.add(d.name)
-                except Exception:
-                    pass
-    return programs
 
 
 @router.get("/audio/tracks/{filename}")

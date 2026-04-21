@@ -7,10 +7,9 @@ import { ProgramHost } from './programs/host';
 import { SessionsList } from './views/SessionsView';
 import { SessionDetail } from './views/SessionsView';
 import { api } from './api/client';
-import type { AppState, SessionMeta } from './contracts';
+import type { AppState, ProgramManifest, SessionMeta } from './contracts';
 
 type SidebarTab = 'settings' | 'programs' | 'sessions';
-interface ProgramMeta { id: string; title: string; description: string }
 
 // ── Icons ──────────────────────────────────────────────────────────────────────
 const GearIcon = () => (
@@ -39,7 +38,7 @@ export default function App() {
   const programId  = useProgramStore((s) => s.activeProgramId);
   const setProgram = useProgramStore((s) => s.setActiveProgramId);
 
-  const [programs, setPrograms]       = useState<ProgramMeta[]>([]);
+  const [programs, setPrograms]       = useState<ProgramManifest[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [sidebarTab, setSidebarTab]   = useState<SidebarTab>('programs');
   const [selectedSession, setSelectedSession] = useState<SessionMeta | null>(null);
@@ -54,7 +53,7 @@ export default function App() {
         useDeviceStore.getState().setAppState(s as AppState);
         if (programsRef.current.length === 0) {
           const progs = await api.getPrograms();
-          setPrograms(progs as ProgramMeta[]);
+          setPrograms(progs as ProgramManifest[]);
         }
       } catch {}
     };

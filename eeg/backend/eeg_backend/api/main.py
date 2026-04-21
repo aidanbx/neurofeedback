@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import asyncio
 import importlib
-import json
 import logging
 import threading
 import time
@@ -31,6 +30,11 @@ from ..hardware.ble_client import (
 from ..hardware.replay import ReplayClient
 from ..metrics.engine import MetricsEngine
 from ..programs.base import ProgramRuntime
+from ..programs.registry import (
+    ProgramDefinition, defaults_from_schema, load_program_definitions,
+    resolve_settings,
+)
+from ..sessions.event_log import SessionEventLog
 from ..sessions.recorder import SessionRecorder
 from ..sessions.store import PROGRAMS_DIR, SESSIONS
 
@@ -38,6 +42,8 @@ from .routes import device as device_routes
 from .routes import training as training_routes
 from .routes import sessions as session_routes
 from .routes import audio as audio_routes
+from .routes import metrics as metrics_routes
+from .routes import programs as program_routes
 from .websocket import manager, ws_endpoint
 
 log = logging.getLogger(__name__)
@@ -47,22 +53,15 @@ CHANNEL = 0
 
 # ── Program loader ─────────────────────────────────────────────────────────────
 
-def _load_programs() -> dict[str, ProgramRuntime]:
+def _load_programs(definitions: dict[str, ProgramDefinition]) -> dict[str, ProgramRuntime]:
     programs: dict[str, ProgramRuntime] = {}
-    if not PROGRAMS_DIR.is_dir():
-        return programs
-    for d in sorted(PROGRAMS_DIR.iterdir()):
-        if not d.is_dir() or not (d / "manifest.json").exists():
-            continue
-        prog_id = d.name
+    for prog_id, definition in definitions.items():
         try:
-            mod = importlib.import_module(f"eeg_backend.programs.{prog_id}.runtime")
-            cls_name = next(
-                (name for name in dir(mod) if name.endswith("Runtime") and name != "ProgramRuntime"),
-                None,
-            )
-            if cls_name:
-                programs[prog_id] = getattr(mod, cls_name)()
+            module_name, class_name = definition.runtime.split(":", 1)
+            mod = importlib.import_module(f"eeg_backend.programs.{prog_id}.{module_name}")
+            runtime = getattr(mod, class_name)()
+            runtime.set_params(defaults_from_schema(definition.settings_schema))
+            programs[prog_id] = runtime
         except Exception as exc:
             log.warning("Failed to load program %s: %s", prog_id, exc)
     return programs
@@ -85,8 +84,10 @@ class SessionApp:
         self.latest_program_output: ProgramOutput | None = None
 
         self.recorder        = SessionRecorder()
+        self.event_log       = SessionEventLog(self.recorder)
         self.metrics_engine  = MetricsEngine()
-        self.programs        = _load_programs()
+        self.program_defs    = load_program_definitions(PROGRAMS_DIR)
+        self.programs        = _load_programs(self.program_defs)
         self.active_program_id: str | None = None
 
         self.ble   = BLEClient(on_frame=self._on_frame, stop_app=self.stop_app)
@@ -94,6 +95,50 @@ class SessionApp:
 
         self._analysis_thread = threading.Thread(target=self._analysis_loop, daemon=True)
         self._analysis_thread.start()
+
+    def start_training(self, program: dict | None) -> None:
+        if not self.recorder.recording:
+            self.recorder.start_recording()
+            self.event_log.append("SessionStarted", source="system")
+        if not program:
+            return
+        program_id = program.get("id")
+        if not program_id or program_id not in self.programs or program_id not in self.program_defs:
+            return
+        definition = self.program_defs[program_id]
+        runtime = self.programs[program_id]
+        params = resolve_settings(definition.settings_schema, current=runtime.get_params())
+        runtime.set_params(params)
+        runtime.reset()
+        enriched_program = {
+            "id": definition.id,
+            "title": definition.title,
+            "version": definition.version,
+            "initial_params": params,
+        }
+        self.recorder.set_training_program(enriched_program)
+        with self.lock:
+            self.active_program_id = program_id
+        self.event_log.append(
+            "ProgramStarted",
+            source="ui",
+            program_id=program_id,
+            data={"program": enriched_program},
+        )
+
+    def stop_training(self) -> Path | None:
+        with self.lock:
+            active_program = self.active_program_id
+        elapsed = self.recorder.session_duration_sec()
+        self.event_log.append(
+            "SessionStopped",
+            source="ui",
+            program_id=active_program,
+            data={"duration_sec": elapsed},
+        )
+        with self.lock:
+            self.active_program_id = None
+        return self.recorder.stop_recording()
 
     def _on_frame(self, frame) -> None:
         with self.lock:
@@ -346,11 +391,15 @@ app.add_middleware(
 device_routes.set_app(APP)
 training_routes.set_app(APP)
 session_routes.set_app(APP)
+metrics_routes.set_app(APP)
+program_routes.set_app(APP)
 
 app.include_router(device_routes.router, prefix="/api")
 app.include_router(training_routes.router, prefix="/api/training")
 app.include_router(session_routes.router, prefix="/api")
 app.include_router(audio_routes.router, prefix="/api")
+app.include_router(metrics_routes.router, prefix="/api")
+app.include_router(program_routes.router, prefix="/api")
 
 
 @app.get("/api/view")

@@ -40,10 +40,14 @@ export function useAudioScene() {
     getScene().setVolume(v);
   }, [getScene]);
 
+  const setTrackVolumes = useCallback((baseVol: number, clearVol: number) => {
+    getScene().setTrackVolumes(baseVol, clearVol);
+  }, [getScene]);
+
   const destroy = useCallback(() => {
     sceneRef.current?.destroy();
     sceneRef.current = null;
   }, []);
 
-  return { load, play, stop, setCrossfade, setVolume, destroy };
+  return { load, play, stop, setCrossfade, setVolume, setTrackVolumes, destroy };
 }

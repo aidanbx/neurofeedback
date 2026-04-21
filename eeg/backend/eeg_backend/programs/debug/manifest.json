@@ -1,0 +1,43 @@
+{
+  "id": "debug",
+  "title": "Debug",
+  "description": "Instrumented diagnostics program for exercising reusable views, program params, and session events.",
+  "version": "1.0",
+  "runtime": "runtime:DebugRuntime",
+  "frontend_view": "debug/view",
+  "required_bands": ["Theta", "Alpha", "SMR", "Beta", "Hi-Beta"],
+  "audio_scenes": [],
+  "settings_schema": {
+    "eyes_closed": {
+      "type": "boolean",
+      "default": false,
+      "label": "Eyes closed",
+      "description": "Operator marker for eyes-open versus eyes-closed debug segments."
+    },
+    "debug_gain": {
+      "type": "number",
+      "default": 1,
+      "min": 0,
+      "max": 2,
+      "step": 0.05,
+      "label": "Debug gain",
+      "description": "Synthetic gain setting used to test tracked numeric params."
+    },
+    "marker_level": {
+      "type": "number",
+      "default": 50,
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "label": "Marker level",
+      "description": "Synthetic marker setting used to test replayable setting changes."
+    },
+    "debug_mode": {
+      "type": "enum",
+      "default": "observe",
+      "options": ["observe", "calibrate", "stress"],
+      "label": "Debug mode",
+      "description": "Synthetic mode flag for validating enum settings."
+    }
+  }
+}

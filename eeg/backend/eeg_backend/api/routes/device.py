@@ -44,10 +44,15 @@ async def get_test_mode():
 
 @router.post("/artifact-toggle")
 async def artifact_toggle():
-    import threading
     with _app.lock:
         _app.artifact_rejection = not _app.artifact_rejection
-    return {"ok": True}
+        value = _app.artifact_rejection
+    _app.event_log.append(
+        "ArtifactRejectionChanged",
+        source="ui",
+        data={"value": value},
+    )
+    return {"ok": True, "value": value}
 
 
 @router.get("/state")

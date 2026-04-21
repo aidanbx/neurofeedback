@@ -1,12 +1,14 @@
 import { lazy, Suspense } from 'react';
-import type { ComponentType, LazyExoticComponent } from 'react';
+import type { ComponentType } from 'react';
 import { useProgramStore } from '../state/programStore';
 
-const VIEWS: Record<string, LazyExoticComponent<ComponentType>> = {
-  alpha_feedback:   lazy(() => import('./alpha_feedback/view')),
-  alpha_theta_beta: lazy(() => import('./alpha_theta_beta/view')),
-  debug:            lazy(() => import('./debug/view')),
-};
+const viewModules = import.meta.glob<{ default: ComponentType }>('./*/view.tsx');
+
+function viewForProgram(programId: string) {
+  const key = `./${programId}/view.tsx`;
+  const loader = viewModules[key];
+  return loader ? lazy(loader) : null;
+}
 
 export function ProgramHost() {
   const programId = useProgramStore((s) => s.activeProgramId);
@@ -20,8 +22,14 @@ export function ProgramHost() {
     );
   }
 
-  const View = VIEWS[programId];
-  if (!View) return <div style={{ padding: 24, color: 'var(--poor)' }}>Unknown program: {programId}</div>;
+  const View = viewForProgram(programId);
+  if (!View) {
+    return (
+      <div style={{ padding: 24, color: 'var(--poor)' }}>
+        Program view is missing for backend program: {programId}
+      </div>
+    );
+  }
 
   return (
     <Suspense fallback={<div style={{ padding: 24, color: 'var(--muted)' }}>Loading…</div>}>

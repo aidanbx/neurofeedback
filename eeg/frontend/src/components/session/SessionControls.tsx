@@ -6,11 +6,20 @@ import { useProgramStore } from '../../state/programStore';
 interface Props {
   programId: string;
   programTitle: string;
+  startLabel?: string;
+  stopLabel?: string;
   onStarted?: () => void;
   onStopped?: () => void;
 }
 
-export function SessionControls({ programId, programTitle, onStarted, onStopped }: Props) {
+export function SessionControls({
+  programId,
+  programTitle,
+  startLabel = 'Start Training',
+  stopLabel = 'Stop Training',
+  onStarted,
+  onStopped,
+}: Props) {
   const appState  = useDeviceStore((s) => s.appState);
   const setActive = useProgramStore((s) => s.setActiveProgramId);
   const active    = useProgramStore((s) => s.activeProgramId);
@@ -43,7 +52,7 @@ export function SessionControls({ programId, programTitle, onStarted, onStopped 
         fontWeight: 600,
       }}
     >
-      {isThis ? 'Stop Training' : 'Start Training'}
+      {isThis ? stopLabel : startLabel}
     </button>
   );
 }

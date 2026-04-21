@@ -4,7 +4,6 @@ from __future__ import annotations
 import json
 import re
 import shutil
-from datetime import datetime
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
@@ -66,16 +65,15 @@ async def append_note(body: dict):
     with _app.lock:
         recording   = _app.recorder.recording
         session_id  = _app.recorder.recording_id or body.get("id", "")
-        rec_started = _app.recorder.recording_started_at
     if not session_id:
         return {"ok": False, "error": "no active session"}
-    if recording and rec_started is not None:
-        elapsed = (datetime.now() - rec_started).total_seconds()
-        out_dir = SESSIONS / session_id
-        out_dir.mkdir(parents=True, exist_ok=True)
-        line = json.dumps({"elapsed": round(elapsed, 3), "type": "note", "text": text}) + "\n"
-        with open(out_dir / "session_events.jsonl", "a") as f:
-            f.write(line)
+    if recording:
+        _app.event_log.append(
+            "NoteAdded",
+            source="ui",
+            data={"text": text},
+            session_id=session_id,
+        )
     else:
         d = find_session_dir(session_id)
         if not d:
@@ -106,17 +104,16 @@ async def delete_note(body: dict):
 
 @router.post("/session/log")
 async def log_event(body: dict):
-    with _app.lock:
-        if not _app.recorder.recording or not _app.recorder.recording_id:
-            return {"ok": False, "error": "not recording"}
-        session_id = _app.recorder.recording_id
-        elapsed    = (datetime.now() - _app.recorder.recording_started_at).total_seconds()
-    out_dir = SESSIONS / session_id
-    out_dir.mkdir(parents=True, exist_ok=True)
-    line = json.dumps({"elapsed": round(elapsed, 3), **body}) + "\n"
-    with open(out_dir / "session_events.jsonl", "a") as f:
-        f.write(line)
-    return {"ok": True}
+    event_type = str(body.get("type", "SessionEvent"))
+    event = _app.event_log.append(
+        event_type,
+        source=str(body.get("source", "ui")),
+        program_id=body.get("program_id"),
+        data=body.get("data") if isinstance(body.get("data"), dict) else {},
+    )
+    if event is None:
+        return {"ok": False, "error": "not recording"}
+    return {"ok": True, "event": event}
 
 
 @router.post("/session/favorite")

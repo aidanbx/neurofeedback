@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState, type MutableRefObject, type Dispatch, type SetStateAction } from 'react';
 import { useProgramStore } from '../../state/programStore';
 import { useDeviceStore } from '../../state/deviceStore';
+import { api } from '../../api/client';
 import { useAudioScene } from '../../audio/useAudioScene';
 import { ProgramLayout } from '../ProgramLayout';
 import { Section } from '../../components/controls/Section';
-import { Slider } from '../../components/controls/Slider';
-import { TrackPicker } from '../../components/controls/TrackPicker';
+import { LoggedSlider, LoggedTrackPicker, ProgramParamSlider } from '../../components/controls/Instrumented';
 import { SessionControls } from '../../components/session/SessionControls';
 import { StatsGrid } from '../../components/session/StatsGrid';
 import { BandBars } from '../../components/graphs/BandBars';
@@ -52,9 +52,11 @@ export default function AlphaThetaBetaView() {
   const [betaBaseV,  setBetaBaseV]  = useState(0.9);
   const [betaClearV, setBetaClearV] = useState(0.9);
 
-  const [alphaReward, setAlphaReward] = useState(65);
-  const [thetaReward, setThetaReward] = useState(65);
-  const [betaReward,  setBetaReward]  = useState(65);
+  const [params, setParams] = useState<Record<string, unknown>>({
+    alpha_reward_pct: 65,
+    theta_reward_pct: 65,
+    beta_reward_pct: 65,
+  });
 
   const aHistRef = useRef<Pt[]>([]); const [aHist, setAHist] = useState<Pt[]>([]);
   const tHistRef = useRef<Pt[]>([]); const [tHist, setTHist] = useState<Pt[]>([]);
@@ -64,6 +66,17 @@ export default function AlphaThetaBetaView() {
   const mode    = payload?.mode ?? '—';
   const calibrating = mode === 'calibrating';
   const calibPct    = payload ? Math.min(payload.alpha_samples / 60, 1) * 100 : 0;
+  const mergeParams = (next: Record<string, unknown>) => setParams((prev) => ({ ...prev, ...next }));
+  const paramNumber = (key: string, fallback: number) => {
+    const value = params[key];
+    return typeof value === 'number' ? value : fallback;
+  };
+
+  useEffect(() => {
+    api.getProgramParams('alpha_theta_beta')
+      .then((res) => setParams(res.params))
+      .catch(() => {});
+  }, []);
 
   const push = (ref: MutableRefObject<Pt[]>, y: number, set: Dispatch<SetStateAction<Pt[]>>, elapsed: number) => {
     ref.current = [...ref.current.slice(-300), { x: elapsed, y }];
@@ -79,10 +92,17 @@ export default function AlphaThetaBetaView() {
 
     const vol = masterVol;
     alphaScene.setVolume(vol); thetaScene.setVolume(vol); betaScene.setVolume(vol);
+    alphaScene.setTrackVolumes(alphaBaseV, alphaClearV);
+    thetaScene.setTrackVolumes(thetaBaseV, thetaClearV);
+    betaScene.setTrackVolumes(betaBaseV, betaClearV);
     alphaScene.setCrossfade(payload.drives.alpha, responseTime);
     thetaScene.setCrossfade(payload.drives.theta, responseTime);
     betaScene.setCrossfade(payload.drives.beta,   responseTime);
-  }, [payload, programOutput]);
+  }, [
+    payload, programOutput, masterVol, responseTime,
+    alphaScene, thetaScene, betaScene,
+    alphaBaseV, alphaClearV, thetaBaseV, thetaClearV, betaBaseV, betaClearV,
+  ]);
 
   const toUrl = (u: string) => u === 'silence' ? null : u;
 
@@ -145,34 +165,34 @@ export default function AlphaThetaBetaView() {
   const sidebar = (
     <>
       <Section title="Alpha Audio">
-        <TrackPicker label="Base"  value={alphaBase}  onChange={setAlphaBase}  />
-        <TrackPicker label="Clear" value={alphaClear} onChange={setAlphaClear} />
-        <Slider label="Base vol"  min={0} max={100} step={1} value={Math.round(alphaBaseV  * 100)} onChange={(v) => setAlphaBaseV(v  / 100)} format={(v) => `${v}%`} />
-        <Slider label="Clear vol" min={0} max={100} step={1} value={Math.round(alphaClearV * 100)} onChange={(v) => setAlphaClearV(v / 100)} format={(v) => `${v}%`} />
-        <Slider label="Reward rate" min={40} max={85} step={1} value={alphaReward} onChange={setAlphaReward} format={(v) => `${v}%`} />
+        <LoggedTrackPicker label="Base"  value={alphaBase}  onChange={setAlphaBase}  programId="alpha_theta_beta" eventKey="alpha.base_track" />
+        <LoggedTrackPicker label="Clear" value={alphaClear} onChange={setAlphaClear} programId="alpha_theta_beta" eventKey="alpha.clear_track" />
+        <LoggedSlider label="Base vol"  min={0} max={100} step={1} value={Math.round(alphaBaseV  * 100)} onChange={(v) => { const next = v / 100; setAlphaBaseV(next); alphaScene.setTrackVolumes(next, alphaClearV); }} format={(v) => `${v}%`} programId="alpha_theta_beta" eventKey="alpha.base_volume_pct" />
+        <LoggedSlider label="Clear vol" min={0} max={100} step={1} value={Math.round(alphaClearV * 100)} onChange={(v) => { const next = v / 100; setAlphaClearV(next); alphaScene.setTrackVolumes(alphaBaseV, next); }} format={(v) => `${v}%`} programId="alpha_theta_beta" eventKey="alpha.clear_volume_pct" />
+        <ProgramParamSlider label="Reward rate" min={40} max={85} step={1} value={paramNumber('alpha_reward_pct', 65)} onResolved={mergeParams} programId="alpha_theta_beta" paramKey="alpha_reward_pct" format={(v) => `${v}%`} />
       </Section>
 
       <Section title="Theta Audio">
-        <TrackPicker label="Base"  value={thetaBase}  onChange={setThetaBase}  />
-        <TrackPicker label="Clear" value={thetaClear} onChange={setThetaClear} />
-        <Slider label="Base vol"  min={0} max={100} step={1} value={Math.round(thetaBaseV  * 100)} onChange={(v) => setThetaBaseV(v  / 100)} format={(v) => `${v}%`} />
-        <Slider label="Clear vol" min={0} max={100} step={1} value={Math.round(thetaClearV * 100)} onChange={(v) => setThetaClearV(v / 100)} format={(v) => `${v}%`} />
-        <Slider label="Reward rate" min={40} max={85} step={1} value={thetaReward} onChange={setThetaReward} format={(v) => `${v}%`} />
+        <LoggedTrackPicker label="Base"  value={thetaBase}  onChange={setThetaBase}  programId="alpha_theta_beta" eventKey="theta.base_track" />
+        <LoggedTrackPicker label="Clear" value={thetaClear} onChange={setThetaClear} programId="alpha_theta_beta" eventKey="theta.clear_track" />
+        <LoggedSlider label="Base vol"  min={0} max={100} step={1} value={Math.round(thetaBaseV  * 100)} onChange={(v) => { const next = v / 100; setThetaBaseV(next); thetaScene.setTrackVolumes(next, thetaClearV); }} format={(v) => `${v}%`} programId="alpha_theta_beta" eventKey="theta.base_volume_pct" />
+        <LoggedSlider label="Clear vol" min={0} max={100} step={1} value={Math.round(thetaClearV * 100)} onChange={(v) => { const next = v / 100; setThetaClearV(next); thetaScene.setTrackVolumes(thetaBaseV, next); }} format={(v) => `${v}%`} programId="alpha_theta_beta" eventKey="theta.clear_volume_pct" />
+        <ProgramParamSlider label="Reward rate" min={40} max={85} step={1} value={paramNumber('theta_reward_pct', 65)} onResolved={mergeParams} programId="alpha_theta_beta" paramKey="theta_reward_pct" format={(v) => `${v}%`} />
       </Section>
 
       <Section title="Beta Audio">
-        <TrackPicker label="Base"  value={betaBase}  onChange={setBetaBase}  />
-        <TrackPicker label="Clear" value={betaClear} onChange={setBetaClear} />
-        <Slider label="Base vol"  min={0} max={100} step={1} value={Math.round(betaBaseV  * 100)} onChange={(v) => setBetaBaseV(v  / 100)} format={(v) => `${v}%`} />
-        <Slider label="Clear vol" min={0} max={100} step={1} value={Math.round(betaClearV * 100)} onChange={(v) => setBetaClearV(v / 100)} format={(v) => `${v}%`} />
-        <Slider label="Reward rate" min={40} max={85} step={1} value={betaReward} onChange={setBetaReward} format={(v) => `${v}%`} />
+        <LoggedTrackPicker label="Base"  value={betaBase}  onChange={setBetaBase}  programId="alpha_theta_beta" eventKey="beta.base_track" />
+        <LoggedTrackPicker label="Clear" value={betaClear} onChange={setBetaClear} programId="alpha_theta_beta" eventKey="beta.clear_track" />
+        <LoggedSlider label="Base vol"  min={0} max={100} step={1} value={Math.round(betaBaseV  * 100)} onChange={(v) => { const next = v / 100; setBetaBaseV(next); betaScene.setTrackVolumes(next, betaClearV); }} format={(v) => `${v}%`} programId="alpha_theta_beta" eventKey="beta.base_volume_pct" />
+        <LoggedSlider label="Clear vol" min={0} max={100} step={1} value={Math.round(betaClearV * 100)} onChange={(v) => { const next = v / 100; setBetaClearV(next); betaScene.setTrackVolumes(betaBaseV, next); }} format={(v) => `${v}%`} programId="alpha_theta_beta" eventKey="beta.clear_volume_pct" />
+        <ProgramParamSlider label="Reward rate" min={40} max={85} step={1} value={paramNumber('beta_reward_pct', 65)} onResolved={mergeParams} programId="alpha_theta_beta" paramKey="beta_reward_pct" format={(v) => `${v}%`} />
       </Section>
 
       <button className="btn btn-accent btn-full" onClick={handleLoadAll}>Load All &amp; Preview</button>
 
       <Section title="Settings">
-        <Slider label="Master volume" min={0} max={100} step={1} value={Math.round(masterVol * 100)} onChange={(v) => { setMasterVol(v / 100); }} format={(v) => `${v}%`} />
-        <Slider label="Response time" min={2} max={40} step={1} value={Math.round(responseTime * 10)} onChange={(v) => setResponseTime(v / 10)} format={(v) => `${(v / 10).toFixed(1)}s`} />
+        <LoggedSlider label="Master volume" min={0} max={100} step={1} value={Math.round(masterVol * 100)} onChange={(v) => { setMasterVol(v / 100); }} format={(v) => `${v}%`} programId="alpha_theta_beta" eventKey="all.master_volume_pct" />
+        <LoggedSlider label="Response time" min={2} max={40} step={1} value={Math.round(responseTime * 10)} onChange={(v) => setResponseTime(v / 10)} format={(v) => `${(v / 10).toFixed(1)}s`} programId="alpha_theta_beta" eventKey="all.response_time_tenths" />
       </Section>
 
       {stats.length > 0 && (

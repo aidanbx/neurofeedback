@@ -7,10 +7,19 @@ __pycache__/
 *.py[cod]
 .venv/
 venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
 
 # Node.js
 node_modules/
 **/node_modules/
+
+# Build outputs
+dist/
+eeg/dist/
 
 # Local secrets/config
 .env

@@ -34,12 +34,40 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 const electron_1 = require("electron");
+const http = __importStar(require("http"));
 const path = __importStar(require("path"));
 const pythonProcess_1 = require("./pythonProcess");
 const PROJECT_ROOT = path.join(__dirname, '..');
 const DEV_MODE = process.env.ELECTRON_DEV === '1';
 const DIST_INDEX = path.join(PROJECT_ROOT, 'dist', 'index.html');
+const DEV_SERVER_URL = 'http://127.0.0.1:3000';
 let win = null;
+function canReach(url) {
+    return new Promise((resolve) => {
+        const req = http.get(url, (res) => {
+            res.resume();
+            resolve(true);
+        });
+        req.setTimeout(500, () => {
+            req.destroy();
+            resolve(false);
+        });
+        req.on('error', () => resolve(false));
+    });
+}
+async function loadDevServer() {
+    for (let attempt = 1; attempt <= 60; attempt += 1) {
+        if (await canReach(DEV_SERVER_URL)) {
+            await win?.loadURL(DEV_SERVER_URL);
+            return;
+        }
+        if (attempt === 1) {
+            console.log(`[electron] waiting for Vite dev server at ${DEV_SERVER_URL}`);
+        }
+        await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+    console.error(`[electron] Vite dev server was not reachable at ${DEV_SERVER_URL}. Run "cd frontend && npm run dev" first.`);
+}
 function createWindow() {
     win = new electron_1.BrowserWindow({
         width: 1280,
@@ -57,7 +85,7 @@ function createWindow() {
     });
     if (DEV_MODE) {
         // Hot-reload via Vite dev server (run `npm run dev` in frontend/ separately)
-        setTimeout(() => win?.loadURL('http://127.0.0.1:3000').catch(console.error), 1000);
+        loadDevServer().catch(console.error);
     }
     else {
         // Load built static files directly — no web server needed for the UI

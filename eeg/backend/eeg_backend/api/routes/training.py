@@ -21,11 +21,13 @@ class ParamsBody(BaseModel):
 
 @router.get("/params")
 async def get_params():
+    """Deprecated compatibility alias for /api/metrics/params."""
     return _app.metrics_engine.get_params()
 
 
 @router.post("/params")
 async def set_params(body: dict):
+    """Deprecated compatibility alias for /api/metrics/params."""
     _app.metrics_engine.set_params(body)
     return {"ok": True}
 
@@ -33,28 +35,19 @@ async def set_params(body: dict):
 @router.post("/reset-baseline")
 async def reset_baseline():
     _app.metrics_engine.reset_baseline()
+    _app.event_log.append("BaselineReset", source="ui")
     return {"ok": True}
 
 
 @router.post("/start")
 async def training_start(body: dict):
-    if not _app.recorder.recording:
-        _app.recorder.start_recording()
-    program = body.get("program")
-    if program:
-        _app.recorder.set_training_program(program)
-        # Load and reset the program runtime
-        program_id = program.get("id")
-        if program_id and program_id in _app.programs:
-            _app.active_program_id = program_id
-            _app.programs[program_id].reset()
+    _app.start_training(body.get("program"))
     return {"ok": True}
 
 
 @router.post("/stop")
 async def training_stop():
-    _app.active_program_id = None
-    path = _app.recorder.stop_recording()
+    path = _app.stop_training()
     if path:
         _app.recorder.start_analysis(path)
     return {"ok": True, "saved_to": str(path) if path else None}

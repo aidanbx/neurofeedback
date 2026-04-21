@@ -1,0 +1,1 @@
+- centralize all backend URL construction in one frontend helper, so components never guess whether they are in Vite dev, Electron file mode, or browser mode.

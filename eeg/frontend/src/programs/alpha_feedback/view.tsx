@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { useProgramStore } from '../../state/programStore';
 import { useDeviceStore } from '../../state/deviceStore';
+import { api } from '../../api/client';
 import { useAudioScene } from '../../audio/useAudioScene';
 import { ProgramLayout } from '../ProgramLayout';
 import { Section } from '../../components/controls/Section';
-import { Slider } from '../../components/controls/Slider';
-import { TrackPicker } from '../../components/controls/TrackPicker';
+import { LoggedSlider, LoggedTrackPicker, ProgramParamSlider } from '../../components/controls/Instrumented';
 import { SessionControls } from '../../components/session/SessionControls';
 import { StatsGrid } from '../../components/session/StatsGrid';
 import { BandBars } from '../../components/graphs/BandBars';
@@ -40,9 +40,11 @@ export default function AlphaFeedbackView() {
   const [baseUrl,      setBaseUrl]      = useState('silence');
   const [clearUrl,     setClearUrl]     = useState('silence');
   const [responseTime, setResponseTime] = useState(1.2);
-  const [rewardTarget, setRewardTarget] = useState(65);
-  const [thetaInhibit, setThetaInhibit] = useState(15);
-  const [betaInhibit,  setBetaInhibit]  = useState(15);
+  const [params, setParams] = useState<Record<string, unknown>>({
+    reward_target_pct: 65,
+    theta_inhibit_pct: 15,
+    beta_inhibit_pct: 15,
+  });
 
   const histRef = useRef<Pt[]>([]);
   const [history, setHistory] = useState<Pt[]>([]);
@@ -54,13 +56,25 @@ export default function AlphaFeedbackView() {
     ? Math.min(payload.alpha_samples / 60, 1) * 100
     : 0;
   const clarity = payload?.drives?.clarity ?? 0;
+  const mergeParams = (next: Record<string, unknown>) => setParams((prev) => ({ ...prev, ...next }));
+  const paramNumber = (key: string, fallback: number) => {
+    const value = params[key];
+    return typeof value === 'number' ? value : fallback;
+  };
+
+  useEffect(() => {
+    api.getProgramParams('alpha_feedback')
+      .then((res) => setParams(res.params))
+      .catch(() => {});
+  }, []);
 
   // Drive audio
   useEffect(() => {
     if (!payload) return;
     scene.setVolume(masterVol);
+    scene.setTrackVolumes(baseVol, clearVol);
     scene.setCrossfade(clarity, responseTime);
-  }, [payload, masterVol, responseTime, clarity, scene]);
+  }, [payload, masterVol, baseVol, clearVol, responseTime, clarity, scene]);
 
   // History
   useEffect(() => {
@@ -123,19 +137,19 @@ export default function AlphaFeedbackView() {
   const sidebar = (
     <>
       <Section title="Audio">
-        <TrackPicker label="Base track"  value={baseUrl}  onChange={setBaseUrl}  />
-        <TrackPicker label="Clear track" value={clearUrl} onChange={setClearUrl} />
+        <LoggedTrackPicker label="Base track"  value={baseUrl}  onChange={setBaseUrl}  programId="alpha_feedback" eventKey="main.base_track" />
+        <LoggedTrackPicker label="Clear track" value={clearUrl} onChange={setClearUrl} programId="alpha_feedback" eventKey="main.clear_track" />
         <button className="btn btn-accent btn-full" onClick={handleLoad}>Load &amp; Preview</button>
-        <Slider label="Base vol"      min={0} max={100} step={1} value={Math.round(baseVol  * 100)} onChange={(v) => setBaseVol(v  / 100)} format={(v) => `${v}%`} />
-        <Slider label="Clear vol"     min={0} max={100} step={1} value={Math.round(clearVol * 100)} onChange={(v) => setClearVol(v / 100)} format={(v) => `${v}%`} />
-        <Slider label="Master volume" min={0} max={100} step={1} value={Math.round(masterVol * 100)} onChange={(v) => { setMasterVol(v / 100); scene.setVolume(v / 100); }} format={(v) => `${v}%`} />
-        <Slider label="Response time" min={2} max={40} step={1} value={Math.round(responseTime * 10)} onChange={(v) => setResponseTime(v / 10)} format={(v) => `${(v / 10).toFixed(1)}s`} />
+        <LoggedSlider label="Base vol"      min={0} max={100} step={1} value={Math.round(baseVol  * 100)} onChange={(v) => { const next = v / 100; setBaseVol(next); scene.setTrackVolumes(next, clearVol); }} format={(v) => `${v}%`} programId="alpha_feedback" eventKey="main.base_volume_pct" />
+        <LoggedSlider label="Clear vol"     min={0} max={100} step={1} value={Math.round(clearVol * 100)} onChange={(v) => { const next = v / 100; setClearVol(next); scene.setTrackVolumes(baseVol, next); }} format={(v) => `${v}%`} programId="alpha_feedback" eventKey="main.clear_volume_pct" />
+        <LoggedSlider label="Master volume" min={0} max={100} step={1} value={Math.round(masterVol * 100)} onChange={(v) => { setMasterVol(v / 100); scene.setVolume(v / 100); }} format={(v) => `${v}%`} programId="alpha_feedback" eventKey="main.master_volume_pct" />
+        <LoggedSlider label="Response time" min={2} max={40} step={1} value={Math.round(responseTime * 10)} onChange={(v) => setResponseTime(v / 10)} format={(v) => `${(v / 10).toFixed(1)}s`} programId="alpha_feedback" eventKey="main.response_time_tenths" />
       </Section>
 
       <Section title="Thresholds">
-        <Slider label="Reward rate"    min={40} max={85} step={1} value={rewardTarget}  onChange={setRewardTarget}  format={(v) => `${v}%`} />
-        <Slider label="Theta inhibit"  min={5}  max={35} step={1} value={thetaInhibit}  onChange={setThetaInhibit}  format={(v) => `${v}%`} />
-        <Slider label="Beta inhibit"   min={5}  max={35} step={1} value={betaInhibit}   onChange={setBetaInhibit}   format={(v) => `${v}%`} />
+        <ProgramParamSlider label="Reward rate"   min={40} max={85} step={1} value={paramNumber('reward_target_pct', 65)} onResolved={mergeParams} programId="alpha_feedback" paramKey="reward_target_pct" format={(v) => `${v}%`} />
+        <ProgramParamSlider label="Theta inhibit" min={5}  max={35} step={1} value={paramNumber('theta_inhibit_pct', 15)} onResolved={mergeParams} programId="alpha_feedback" paramKey="theta_inhibit_pct" format={(v) => `${v}%`} />
+        <ProgramParamSlider label="Beta inhibit"  min={5}  max={35} step={1} value={paramNumber('beta_inhibit_pct', 15)} onResolved={mergeParams} programId="alpha_feedback" paramKey="beta_inhibit_pct" format={(v) => `${v}%`} />
       </Section>
 
       {stats.length > 0 && (

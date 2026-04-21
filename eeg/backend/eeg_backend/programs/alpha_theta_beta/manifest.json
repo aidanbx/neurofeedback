@@ -2,5 +2,56 @@
   "id": "alpha_theta_beta",
   "title": "Alpha-Theta-Beta Feedback",
   "description": "Three independent audio channels: alpha, theta, and combined beta (Beta + Hi-Beta). Each drives its own base/clear scene.",
-  "version": "2.0"
+  "version": "2.0",
+  "runtime": "runtime:AlphaThetaBetaRuntime",
+  "frontend_view": "alpha_theta_beta/view",
+  "required_bands": ["Alpha", "Theta", "Beta", "Hi-Beta"],
+  "audio_scenes": ["alpha", "theta", "beta"],
+  "settings_schema": {
+    "calibration_window_sec": {
+      "type": "number",
+      "default": 180,
+      "min": 10,
+      "max": 600,
+      "step": 5,
+      "label": "Calibration window",
+      "description": "Rolling calibration window in seconds."
+    },
+    "clarity_at_threshold": {
+      "type": "number",
+      "default": 0.5,
+      "min": 0.05,
+      "max": 0.95,
+      "step": 0.05,
+      "label": "Threshold clarity",
+      "description": "Clarity value at each reward threshold."
+    },
+    "alpha_reward_pct": {
+      "type": "number",
+      "default": 65,
+      "min": 40,
+      "max": 85,
+      "step": 1,
+      "label": "Alpha reward",
+      "description": "Target percentage of alpha samples expected to reward."
+    },
+    "theta_reward_pct": {
+      "type": "number",
+      "default": 65,
+      "min": 40,
+      "max": 85,
+      "step": 1,
+      "label": "Theta reward",
+      "description": "Target percentage of theta samples expected to reward."
+    },
+    "beta_reward_pct": {
+      "type": "number",
+      "default": 65,
+      "min": 40,
+      "max": 85,
+      "step": 1,
+      "label": "Beta reward",
+      "description": "Target percentage of beta samples expected to reward."
+    }
+  }
 }

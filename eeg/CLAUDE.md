@@ -1,5 +1,8 @@
 # EEG Neurofeedback App
 
+Use schema-first program settings. Do not add behavior-affecting local-only UI state. Program params must go through /api/programs/{id}/params. UI/audio-only state must log session events. For frontend changes, run npm run build. For backend changes, run the focused Python tests. Do not start Electron unless explicitly doing manual UI smoke testing.
+
+
 Rebuilt from `web_session_app/`. All program logic runs in Python; frontend receives data via WebSocket.
 
 ## Environment

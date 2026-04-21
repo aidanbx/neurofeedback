@@ -1,3 +1,5 @@
+import type { ProgramManifest, ProgramParamsResponse, SessionEventInput } from '../contracts';
+
 // In Vite dev mode, /api is proxied. When loaded from file://, go direct to backend.
 const BASE = window.location.protocol === 'file:' ? 'http://127.0.0.1:8765/api' : '/api';
 
@@ -19,9 +21,26 @@ export const api = {
       body: JSON.stringify({ session_id: sessionId ?? null }),
     }),
   artifactToggle:     () => request<{ ok: boolean }>('/artifact-toggle', { method: 'POST', body: '{}' }),
+  getMetricsParams:   () => request<Record<string, unknown>>('/metrics/params'),
+  setMetricsParams:   (params: Record<string, unknown>) =>
+    request<{ ok: boolean; params: Record<string, unknown>; changes: Record<string, unknown> }>(
+      '/metrics/params',
+      { method: 'POST', body: JSON.stringify(params) },
+    ),
   getTrainingParams:  () => request<Record<string, unknown>>('/training/params'),
   setTrainingParams:  (params: Record<string, unknown>) =>
     request<{ ok: boolean }>('/training/params', { method: 'POST', body: JSON.stringify(params) }),
+  getProgramParams:   (id: string) => request<ProgramParamsResponse>(`/programs/${encodeURIComponent(id)}/params`),
+  setProgramParams:   (id: string, params: Record<string, unknown>) =>
+    request<{ ok: boolean; program_id: string; params: Record<string, unknown>; changes: Record<string, unknown> }>(
+      `/programs/${encodeURIComponent(id)}/params`,
+      { method: 'POST', body: JSON.stringify(params) },
+    ),
+  logEvent:           (event: SessionEventInput) =>
+    request<{ ok: boolean; event?: unknown; error?: string }>('/session/log', {
+      method: 'POST',
+      body: JSON.stringify(event),
+    }),
   resetBaseline:      () => request<{ ok: boolean }>('/training/reset-baseline', { method: 'POST', body: '{}' }),
   startTraining:      (program?: { id: string; title: string }) =>
     request<{ ok: boolean }>('/training/start', { method: 'POST', body: JSON.stringify({ program }) }),
@@ -37,5 +56,5 @@ export const api = {
   archiveSessions:    (ids: string[]) =>
     request<{ ok: boolean; moved: string[] }>('/session/archive', { method: 'POST', body: JSON.stringify({ ids }) }),
   getAudioTracks:     () => request<{ name: string; filename: string; url: string }[]>('/audio-tracks'),
-  getPrograms:        () => request<{ id: string; title: string; description: string; version: string }[]>('/programs'),
+  getPrograms:        () => request<ProgramManifest[]>('/programs'),
 };

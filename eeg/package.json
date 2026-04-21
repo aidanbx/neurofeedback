@@ -5,7 +5,10 @@
   "main": "electron-dist/main.js",
   "scripts": {
     "electron": "node_modules/.bin/electron .",
-    "dev": "concurrently \"cd frontend && npm run dev\" \"sleep 4 && npm run electron\"",
+    "dev": "concurrently -n backend,frontend,electron \"npm run dev:backend\" \"npm run dev:frontend\" \"sleep 4 && npm run dev:electron\"",
+    "dev:backend": "cd backend && conda run -n eeg uvicorn eeg_backend.api.main:app --host 127.0.0.1 --port 8765 --reload",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:electron": "ELECTRON_DEV=1 node_modules/.bin/electron .",
     "build:frontend": "cd frontend && npm run build",
     "build": "npm run build:frontend && tsc -p electron/tsconfig.json"
   },

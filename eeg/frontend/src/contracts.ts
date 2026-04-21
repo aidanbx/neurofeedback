@@ -29,6 +29,43 @@ export interface ProgramOutput {
   payload: Record<string, unknown>;
 }
 
+export interface SettingSpec {
+  type: 'number' | 'boolean' | 'string' | 'enum';
+  default: unknown;
+  min?: number;
+  max?: number;
+  step?: number;
+  label?: string;
+  description?: string;
+  options?: unknown[];
+}
+
+export interface ProgramManifest {
+  id: string;
+  title: string;
+  description: string;
+  version: string;
+  runtime: string;
+  frontend_view: string;
+  settings_schema: Record<string, SettingSpec>;
+  required_bands: string[];
+  audio_scenes: string[];
+}
+
+export interface ProgramParamsResponse {
+  ok: boolean;
+  program_id: string;
+  params: Record<string, unknown>;
+  settings_schema: Record<string, SettingSpec>;
+}
+
+export interface SessionEventInput {
+  type: string;
+  source?: string;
+  program_id?: string;
+  data?: Record<string, unknown>;
+}
+
 export interface SessionMeta {
   id: string;
   started_at: string;
