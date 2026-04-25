@@ -8,7 +8,6 @@ import numpy as np
 from ...contracts import MetricsSnapshot, ProgramOutput
 from ..templates import RewardInhibitRuntime, _quantile
 
-DEFAULT_DSP_RANGE   = 3.0
 DEFAULT_REWARD_PCT  = 65.0
 
 
@@ -48,9 +47,9 @@ class AlphaThetaBetaRuntime(RewardInhibitRuntime):
         alpha = snap.bands.get("Alpha")
         theta = snap.bands.get("Theta")
 
-        alpha_val = alpha.smoothed if alpha else 0.0
-        theta_val = theta.smoothed if theta else 0.0
-        beta_val  = self._combined_beta_smoothed(snap)
+        alpha_val = alpha.log_absolute if alpha else 0.0
+        theta_val = theta.log_absolute if theta else 0.0
+        beta_val  = self._combined_beta_log_absolute(snap)
 
         self._ingest_sample(snap, elapsed, {
             "Alpha": alpha_val,
@@ -62,18 +61,15 @@ class AlphaThetaBetaRuntime(RewardInhibitRuntime):
         counts = {k: len(v) for k, v in self._calibration.items()}
 
         if not enough:
-            def _norm(v: float) -> float:
-                r = DEFAULT_DSP_RANGE
-                return float(np.clip((v + r) / (2 * r) * 100, 0, 100))
-            alpha_norm = _norm(alpha_val)
-            theta_norm = _norm(theta_val)
-            beta_norm  = _norm(beta_val)
-            a_thr = 100.0 - self._alpha_reward_pct
-            t_thr = 100.0 - self._theta_reward_pct
-            b_thr = 100.0 - self._beta_reward_pct
-            alpha_clarity = self._clarity_from_range(alpha_norm, a_thr, 0.0, 100.0)
-            theta_clarity = self._clarity_from_range(theta_norm, t_thr, 0.0, 100.0)
-            beta_clarity  = self._clarity_from_range(beta_norm,  b_thr, 0.0, 100.0)
+            alpha_vals = [v for _, v in self._calibration["Alpha"]]
+            theta_vals = [v for _, v in self._calibration["Theta"]]
+            beta_vals = [v for _, v in self._calibration["Beta"]]
+            a_thr = self._threshold_from_target("Alpha", self._alpha_reward_pct) if alpha_vals else alpha_val
+            t_thr = self._threshold_from_target("Theta", self._theta_reward_pct) if theta_vals else theta_val
+            b_thr = self._threshold_from_target("Beta", self._beta_reward_pct) if beta_vals else beta_val
+            alpha_clarity = self._clarity_from_range(alpha_val, a_thr, min(alpha_vals) if alpha_vals else alpha_val - 0.25, max(alpha_vals) if alpha_vals else alpha_val + 0.25)
+            theta_clarity = self._clarity_from_range(theta_val, t_thr, min(theta_vals) if theta_vals else theta_val - 0.25, max(theta_vals) if theta_vals else theta_val + 0.25)
+            beta_clarity  = self._clarity_from_range(beta_val,  b_thr, min(beta_vals) if beta_vals else beta_val - 0.25, max(beta_vals) if beta_vals else beta_val + 0.25)
             mode = "warm_start"
         else:
             alpha_vals = [v for _, v in self._calibration["Alpha"]]

@@ -1,13 +1,19 @@
 import { lazy, Suspense } from 'react';
-import type { ComponentType } from 'react';
+import type { ComponentType, LazyExoticComponent } from 'react';
 import { useProgramStore } from '../state/programStore';
 
 const viewModules = import.meta.glob<{ default: ComponentType }>('./*/view.tsx');
+const viewCache = new Map<string, LazyExoticComponent<ComponentType>>();
 
 function viewForProgram(programId: string) {
   const key = `./${programId}/view.tsx`;
   const loader = viewModules[key];
-  return loader ? lazy(loader) : null;
+  if (!loader) return null;
+  const cached = viewCache.get(key);
+  if (cached) return cached;
+  const View = lazy(loader);
+  viewCache.set(key, View);
+  return View;
 }
 
 export function ProgramHost() {

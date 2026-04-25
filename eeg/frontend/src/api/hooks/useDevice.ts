@@ -23,5 +23,15 @@ export function useDevice() {
     await refreshState();
   }, [refreshState]);
 
-  return { refreshState, connectToggle, toggleTestMode };
+  const toggleNotch = useCallback(async () => {
+    await api.notchToggle();
+    await refreshState();
+  }, [refreshState]);
+
+  const toggleArtifactRejection = useCallback(async () => {
+    await api.artifactToggle();
+    await refreshState();
+  }, [refreshState]);
+
+  return { refreshState, connectToggle, toggleTestMode, toggleNotch, toggleArtifactRejection };
 }

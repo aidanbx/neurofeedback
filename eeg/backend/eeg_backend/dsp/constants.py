@@ -9,7 +9,8 @@ LIVE_TRACE_SEC         = 8
 ANALYSIS_SEC           = 2
 TRAINING_ANALYSIS_SEC  = 1.0
 DIAGNOSTIC_SEC         = 8
-METRIC_INTERVAL        = 0.5
+ANALYSIS_INTERVAL_SEC  = 0.25   # how often the analysis thread computes metrics
+LOGGING_INTERVAL_SEC   = 0.5    # how often computed metrics are written to session CSV
 SPEC_MAX_HZ            = 30.0
 
 DISPLAY_HIGHPASS_HZ  = 0.5

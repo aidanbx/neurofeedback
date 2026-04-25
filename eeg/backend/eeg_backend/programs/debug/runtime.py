@@ -16,6 +16,9 @@ class DebugPayload:
     debug_mode: str
     quality_score: float
     artifact_fraction: float
+    common_mode_corr: float
+    slow_wave_ratio: float
+    line_noise_ratio: float
     alpha_smoothed: float
     beta_smoothed: float
     baseline_ready_count: int
@@ -59,6 +62,9 @@ class DebugRuntime(ProgramRuntime):
             debug_mode=str(self._params["debug_mode"]),
             quality_score=round(snap.quality_score, 2),
             artifact_fraction=round(snap.artifact_fraction, 4),
+            common_mode_corr=round(snap.common_mode_corr, 4),
+            slow_wave_ratio=round(snap.slow_wave_ratio, 4),
+            line_noise_ratio=round(snap.line_noise_ratio, 4),
             alpha_smoothed=alpha.smoothed if alpha else 0.0,
             beta_smoothed=beta.smoothed if beta else 0.0,
             baseline_ready_count=ready_count,

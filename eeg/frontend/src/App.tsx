@@ -7,6 +7,7 @@ import { ProgramHost } from './programs/host';
 import { SessionsList } from './views/SessionsView';
 import { SessionDetail } from './views/SessionsView';
 import { api } from './api/client';
+import { Slider } from './components/controls/Slider';
 import type { AppState, ProgramManifest, SessionMeta } from './contracts';
 
 type SidebarTab = 'settings' | 'programs' | 'sessions';
@@ -38,12 +39,18 @@ export default function App() {
   const programId  = useProgramStore((s) => s.activeProgramId);
   const setProgram = useProgramStore((s) => s.setActiveProgramId);
 
-  const [programs, setPrograms]       = useState<ProgramManifest[]>([]);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [sidebarTab, setSidebarTab]   = useState<SidebarTab>('programs');
+  const [programs, setPrograms]           = useState<ProgramManifest[]>([]);
+  const [sidebarOpen, setSidebarOpen]     = useState(true);
+  const [sidebarTab, setSidebarTab]       = useState<SidebarTab>('programs');
   const [selectedSession, setSelectedSession] = useState<SessionMeta | null>(null);
+  const [broadcastHz, setBroadcastHz] = useState(4);
   const programsRef = useRef(programs);
   programsRef.current = programs;
+
+  const handleBroadcastHz = (hz: number) => {
+    setBroadcastHz(hz);
+    api.setMetricInterval(1 / hz).catch(() => {});
+  };
 
   // Poll backend state + lazy-load programs on first successful response
   useEffect(() => {
@@ -157,6 +164,18 @@ export default function App() {
                     {appState.status_message}
                   </div>
                 )}
+              </div>
+              <div style={{ marginTop: 4 }}>
+                <div className="nf-section-title">Stream</div>
+                <div style={{ marginTop: 6 }}>
+                  <Slider
+                    label="Broadcast rate"
+                    min={1} max={250} step={1}
+                    value={broadcastHz}
+                    onChange={handleBroadcastHz}
+                    format={(v) => `${v} Hz`}
+                  />
+                </div>
               </div>
             </>}
 

@@ -1,4 +1,4 @@
-import { useRef, useCallback } from 'react';
+import { useRef, useCallback, useMemo } from 'react';
 import { AudioScene } from './AudioScene';
 
 let sharedCtx: AudioContext | null = null;
@@ -49,5 +49,13 @@ export function useAudioScene() {
     sceneRef.current = null;
   }, []);
 
-  return { load, play, stop, setCrossfade, setVolume, setTrackVolumes, destroy };
+  return useMemo(() => ({
+    load,
+    play,
+    stop,
+    setCrossfade,
+    setVolume,
+    setTrackVolumes,
+    destroy,
+  }), [destroy, load, play, setCrossfade, setTrackVolumes, setVolume, stop]);
 }

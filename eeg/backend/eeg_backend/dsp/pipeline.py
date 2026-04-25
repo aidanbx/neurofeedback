@@ -14,13 +14,22 @@ from ..contracts import BandPowers, ProcessedFrame
 
 # ── Pure signal utilities ─────────────────────────────────────────────────────
 
-def clean_signal(data: np.ndarray, mode: str = "analysis") -> np.ndarray:
+def clean_signal(
+    data: np.ndarray,
+    mode: str = "analysis",
+    *,
+    notch_60hz: bool = True,
+    lowpass: bool = True,
+) -> np.ndarray:
     if len(data) < 12:
         return np.asarray(data, dtype=float)
     sos = ANALYSIS_HP if mode == "analysis" else DISPLAY_HP
     filtered = sosfiltfilt(sos, np.asarray(data, dtype=float))
-    filtered = sosfiltfilt(LOWPASS, filtered)
-    return np.asarray(lfilter(NOTCH_B, NOTCH_A, filtered))
+    if lowpass:
+        filtered = sosfiltfilt(LOWPASS, filtered)
+    if notch_60hz:
+        filtered = lfilter(NOTCH_B, NOTCH_A, filtered)
+    return np.asarray(filtered)
 
 
 def apply_view_processing(
@@ -119,6 +128,7 @@ def compute_frame_metrics(
     channels: list[np.ndarray],
     channel_idx: int,
     artifact_rejection: bool,
+    notch_60hz: bool,
     adc_max_uv: float,
 ) -> ProcessedFrame | None:
     training_count = int(TRAINING_ANALYSIS_SEC * SRATE)
@@ -132,9 +142,11 @@ def compute_frame_metrics(
     analysis_seg  = live[-analysis_count:] if len(live) >= analysis_count else live
     diag_seg      = live[-diag_count:]     if len(live) >= diag_count     else live
 
-    live_filtered  = clean_signal(live_seg   - np.median(live_seg),   mode="display")
-    analysis_clean = clean_signal(analysis_seg - np.median(analysis_seg), mode="analysis")
-    diag_clean     = clean_signal(diag_seg   - np.median(diag_seg),   mode="analysis")
+    live_filtered  = clean_signal(live_seg   - np.median(live_seg),   mode="display", notch_60hz=notch_60hz)
+    analysis_clean = clean_signal(analysis_seg - np.median(analysis_seg), mode="analysis", notch_60hz=notch_60hz, lowpass=False)
+    analysis_raw   = clean_signal(analysis_seg - np.median(analysis_seg), mode="analysis", notch_60hz=False, lowpass=False)
+    diag_clean     = clean_signal(diag_seg   - np.median(diag_seg),   mode="analysis", notch_60hz=notch_60hz, lowpass=False)
+    diag_raw       = clean_signal(diag_seg   - np.median(diag_seg),   mode="analysis", notch_60hz=False, lowpass=False)
 
     # Artifact detection on analysis window
     artifact_mask_arr = _artifact_mask(analysis_clean)
@@ -148,9 +160,15 @@ def compute_frame_metrics(
     freqs, psd = welch(psd_input, fs=SRATE,
                        nperseg=min(len(psd_input), 512),
                        noverlap=min(len(psd_input) // 2, 256))
+    raw_freqs, raw_psd = welch(analysis_raw, fs=SRATE,
+                               nperseg=min(len(analysis_raw), 512),
+                               noverlap=min(len(analysis_raw) // 2, 256))
     diag_freqs, diag_psd = welch(diag_clean, fs=SRATE,
                                   nperseg=min(len(diag_clean), 1024),
                                   noverlap=min(len(diag_clean) // 2, 512))
+    raw_diag_freqs, raw_diag_psd = welch(diag_raw, fs=SRATE,
+                                         nperseg=min(len(diag_raw), 1024),
+                                         noverlap=min(len(diag_raw) // 2, 512))
 
     absolute_d  = {name: band_integral(freqs, psd, lo, hi) for name, (lo, hi) in BANDS.items()}
     total_1_30  = band_integral(freqs, psd, 1, 30)
@@ -160,7 +178,7 @@ def compute_frame_metrics(
     }
 
     # 1-second training PSD
-    training_clean = clean_signal(training_seg - np.median(training_seg), mode="analysis")
+    training_clean = clean_signal(training_seg - np.median(training_seg), mode="analysis", notch_60hz=notch_60hz)
     if artifact_rejection and artifact_fraction < 0.8:
         t_mask = _artifact_mask(training_clean)
         training_clean = _interpolate_artifacts(training_clean, t_mask)
@@ -170,6 +188,11 @@ def compute_frame_metrics(
         noverlap=min(len(training_clean) // 2, 125),
     )
     absolute_training_d = {name: band_integral(train_freqs, train_psd, lo, hi) for name, (lo, hi) in BANDS.items()}
+    total_1_30_t = band_integral(train_freqs, train_psd, 1, 30)
+    relative_1_30_training_d = {
+        name: (absolute_training_d[name] / total_1_30_t * 100.0 if total_1_30_t > 1e-9 else 0.0)
+        for name in BANDS
+    }
     total_4_30_t = band_integral(train_freqs, train_psd, 4, 30)
     relative_4_30_training_d = {
         name: (absolute_training_d[name] / total_4_30_t * 100.0 if total_4_30_t > 1e-9 else 0.0)
@@ -179,7 +202,8 @@ def compute_frame_metrics(
     # Quality scoring
     low_freq_power = band_integral(diag_freqs, diag_psd, 0.25, 2.0)
     eeg_band_power = band_integral(diag_freqs, diag_psd, 2.0, 40.0)
-    line_power     = band_integral(diag_freqs, diag_psd, 58.0, 62.0)
+    raw_line_power = band_integral(raw_diag_freqs, raw_diag_psd, 58.0, 62.0)
+    raw_eeg_band_power = band_integral(raw_diag_freqs, raw_diag_psd, 2.0, 40.0)
     rms  = float(np.sqrt(np.mean(np.square(analysis_seg - np.median(analysis_seg)))))
     p2p  = float(np.percentile(analysis_seg, 99) - np.percentile(analysis_seg, 1))
     deriv = np.diff(analysis_seg)
@@ -198,7 +222,7 @@ def compute_frame_metrics(
     common_corr = float(np.mean(np.abs(correlations))) if correlations else 0.0
 
     low_ratio  = low_freq_power / max(eeg_band_power, 1e-9)
-    line_ratio = line_power     / max(eeg_band_power, 1e-9)
+    line_ratio = raw_line_power / max(raw_eeg_band_power, 1e-9)
     score = 100.0
     score -= min(low_ratio * 70.0, 40.0)
     score -= min(line_ratio * 30.0, 18.0)
@@ -212,18 +236,25 @@ def compute_frame_metrics(
     score = float(np.clip(score, 0.0, 100.0))
     label = "good" if score >= 80 else ("fair" if score >= 55 else "poor")
 
-    psd_mask = freqs <= 40
+    psd_mask = freqs <= 70
+    raw_psd_mask = raw_freqs <= 70
 
     return ProcessedFrame(
         psd_freqs=freqs[psd_mask].tolist(),
         psd_values=psd[psd_mask].tolist(),
+        raw_psd_freqs=raw_freqs[raw_psd_mask].tolist(),
+        raw_psd_values=raw_psd[raw_psd_mask].tolist(),
         absolute=_dict_to_bandpowers(absolute_d),
         relative=_dict_to_bandpowers(relative_d),
         absolute_training=_dict_to_bandpowers(absolute_training_d),
+        relative_1_30_training=_dict_to_bandpowers(relative_1_30_training_d),
         relative_4_30_training=_dict_to_bandpowers({**relative_4_30_training_d, "Delta": 0.0}),
         quality_score=score,
         quality_label=label,
         artifact_fraction=artifact_fraction,
+        common_mode_corr=common_corr,
+        slow_wave_ratio=low_ratio,
+        line_noise_ratio=line_ratio,
         live_trace_t=(np.arange(len(live_filtered)) / SRATE).tolist(),
         live_trace_y=live_filtered.tolist(),
     )

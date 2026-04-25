@@ -25,13 +25,19 @@ class BandPowers:
 class ProcessedFrame:
     psd_freqs:              list[float]
     psd_values:             list[float]
+    raw_psd_freqs:          list[float]
+    raw_psd_values:         list[float]
     absolute:               BandPowers
     relative:               BandPowers
     absolute_training:      BandPowers
+    relative_1_30_training: BandPowers
     relative_4_30_training: BandPowers
     quality_score:          float
     quality_label:          str           # "good" | "fair" | "poor"
     artifact_fraction:      float
+    common_mode_corr:       float
+    slow_wave_ratio:        float
+    line_noise_ratio:       float
     live_trace_t:           list[float]
     live_trace_y:           list[float]
 
@@ -39,6 +45,8 @@ class ProcessedFrame:
 @dataclass
 class BandFeature:
     absolute:          float
+    relative_1_30:     float
+    relative_4_30:     float
     log_absolute:      float
     baseline_delta:    float
     baseline_zscore:   float
@@ -54,8 +62,13 @@ class MetricsSnapshot:
     quality_score:     float
     quality_label:     str
     artifact_fraction: float
+    common_mode_corr:  float
+    slow_wave_ratio:   float
+    line_noise_ratio:  float
     psd_freqs:         list[float]
     psd_values:        list[float]
+    raw_psd_freqs:     list[float]
+    raw_psd_values:    list[float]
     live_trace_t:      list[float]
     live_trace_y:      list[float]
     bands: dict[str, BandFeature]   # "Delta","Theta","Alpha","SMR","Beta","Hi-Beta"

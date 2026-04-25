@@ -5,19 +5,17 @@ import { useProgramStore } from '../../state/programStore';
 import type { StreamMessage } from '../../contracts';
 
 export function useEEGStream() {
-  const setMetrics    = useDeviceStore((s) => s.setMetrics);
-  const setProgramOut = useProgramStore((s) => s.setOutput);
+  const setMetricsBatch = useDeviceStore((s) => s.setMetricsBatch);
+  const setProgramOut   = useProgramStore((s) => s.setOutput);
 
   useEffect(() => {
     eegWS.connect();
     const unsub = eegWS.subscribe((msg: StreamMessage) => {
       if (msg.type === 'metrics') {
-        setMetrics(msg.data);
+        setMetricsBatch(msg.data);
         setProgramOut(msg.program_output);
       }
     });
-    return () => {
-      unsub();
-    };
-  }, [setMetrics, setProgramOut]);
+    return () => { unsub(); };
+  }, [setMetricsBatch, setProgramOut]);
 }

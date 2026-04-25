@@ -7,7 +7,7 @@ from typing import Any
 
 import numpy as np
 
-from ..dsp.constants import BANDS, METRIC_INTERVAL, TRAINING_BANDS
+from ..dsp.constants import ANALYSIS_INTERVAL_SEC, BANDS, TRAINING_BANDS
 from ..contracts import BandFeature
 
 METRIC_MODES = ("relative_4_30", "log_absolute", "baseline_delta", "baseline_zscore")
@@ -31,14 +31,15 @@ class MetricsEngine:
 
     def __init__(self) -> None:
         self.params = TrainingParams()
-        self._shared_history: deque = deque()
+        self._band_history: dict[str, deque] = {name: deque() for name in TRAINING_BANDS}
         self._smoothed: dict[str, float] = {name: 0.0 for name in TRAINING_BANDS}
         self._rebuild_history()
 
     def _rebuild_history(self) -> None:
-        max_n = max(1, round(self.params.baseline_sec / METRIC_INTERVAL))
-        old = list(self._shared_history)
-        self._shared_history = deque(old[-max_n:], maxlen=max_n)
+        max_n = max(1, round(self.params.baseline_sec / ANALYSIS_INTERVAL_SEC))
+        for name in TRAINING_BANDS:
+            old = list(self._band_history.get(name, deque()))
+            self._band_history[name] = deque(old[-max_n:], maxlen=max_n)
 
     def set_params(self, d: dict[str, Any]) -> None:
         p = self.params
@@ -68,54 +69,54 @@ class MetricsEngine:
         }
 
     def reset_baseline(self) -> None:
-        self._shared_history.clear()
+        for hist in self._band_history.values():
+            hist.clear()
         self._smoothed = {name: 0.0 for name in TRAINING_BANDS}
 
     def update(
         self,
         absolute:          dict[str, float],
+        relative_1_30:     dict[str, float],
         relative_4_30:     dict[str, float],
         quality_score:     float,
         artifact_fraction: float,
     ) -> dict[str, BandFeature]:
         p = self.params
         good = quality_score >= p.quality_gate and artifact_fraction < p.artifact_gate
-        min_n = max(1, round(p.baseline_min_sec / METRIC_INTERVAL))
-
-        total_4_30 = sum(float(absolute.get(n, 0.0)) for n in TRAINING_BANDS)
-        n_bands    = len(TRAINING_BANDS)
-        log_mean   = float(np.log(max(total_4_30 / n_bands, 1e-12)))
-        if good:
-            self._shared_history.append(log_mean)
-
-        hist = np.array(self._shared_history, dtype=float)
-        baseline_ready = len(hist) >= min_n
-
-        if baseline_ready and len(hist) >= 2:
-            shared_med   = float(np.median(hist))
-            shared_mad   = float(np.median(np.abs(hist - shared_med)))
-            shared_sigma = 1.4826 * shared_mad
-        else:
-            shared_med   = log_mean
-            shared_sigma = 1.0
+        min_n = max(1, round(p.baseline_min_sec / ANALYSIS_INTERVAL_SEC))
 
         features: dict[str, BandFeature] = {}
 
         for name in TRAINING_BANDS:
             abs_val = float(absolute.get(name, 0.0))
             log_abs = float(np.log(max(abs_val, 1e-12)))
+            if good:
+                self._band_history[name].append(log_abs)
 
-            baseline_delta  = log_abs - shared_med
-            baseline_zscore = (baseline_delta / (shared_sigma + 1e-9)) if p.use_mad else baseline_delta
+            hist = np.array(self._band_history[name], dtype=float)
+            baseline_ready = len(hist) >= min_n
+
+            if baseline_ready and len(hist) >= 2:
+                band_med   = float(np.median(hist))
+                band_mad   = float(np.median(np.abs(hist - band_med)))
+                band_sigma = max(1.4826 * band_mad, 1e-6)
+            else:
+                band_med   = log_abs
+                band_sigma = 1.0
+
+            baseline_delta_raw  = log_abs - band_med
+            baseline_zscore_raw = (baseline_delta_raw / band_sigma) if p.use_mad else baseline_delta_raw
+            baseline_delta = baseline_delta_raw if baseline_ready else 0.0
+            baseline_zscore = baseline_zscore_raw if baseline_ready else 0.0
 
             if p.metric_mode == "relative_4_30":
                 raw = float(relative_4_30.get(name, 0.0))
             elif p.metric_mode == "log_absolute":
                 raw = log_abs
             elif p.metric_mode == "baseline_zscore":
-                raw = baseline_zscore if baseline_ready else 0.0
+                raw = baseline_zscore
             else:
-                raw = baseline_delta if baseline_ready else 0.0
+                raw = baseline_delta
 
             prev = self._smoothed[name]
             if p.smoothing:
@@ -127,6 +128,8 @@ class MetricsEngine:
 
             features[name] = BandFeature(
                 absolute=round(abs_val, 6),
+                relative_1_30=round(float(relative_1_30.get(name, 0.0)), 4),
+                relative_4_30=round(float(relative_4_30.get(name, 0.0)), 4),
                 log_absolute=round(log_abs, 4),
                 baseline_delta=round(baseline_delta, 4),
                 baseline_zscore=round(baseline_zscore, 4),

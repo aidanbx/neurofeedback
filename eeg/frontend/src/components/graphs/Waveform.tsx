@@ -1,4 +1,7 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useCanvasSize } from './useCanvasSize';
+import { ComponentSettings } from '../controls/ComponentSettings';
+import { Slider } from '../controls/Slider';
 
 interface Props {
   t: number[];
@@ -17,6 +20,19 @@ function pct(arr: number[], p: number): number {
 
 export function Waveform({ t, y, width = 600, height = 140, color = '#4488ff', label }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const size      = useCanvasSize(width, height);
+  const [viewSec, setViewSec] = useState(8);
+  width = size.width;
+
+  const totalSec = t.length > 1 ? t[t.length - 1] - t[0] : 8;
+  const maxView  = Math.max(1, Math.ceil(totalSec));
+
+  // Crop to last viewSec seconds
+  const tEnd   = t[t.length - 1] ?? 0;
+  const tStart = tEnd - viewSec;
+  const startIdx = t.findIndex((v) => v >= tStart);
+  const tView  = startIdx >= 0 ? t.slice(startIdx) : t;
+  const yView  = startIdx >= 0 ? y.slice(startIdx) : y;
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -34,23 +50,22 @@ export function Waveform({ t, y, width = 600, height = 140, color = '#4488ff', l
     ctx.fillStyle = '#13131e';
     ctx.fillRect(0, 0, width, height);
 
-    if (t.length < 2) return;
+    if (tView.length < 2) return;
 
-    const lo = pct(y, 2);
-    const hi = pct(y, 98);
+    const lo = pct(yView, 2);
+    const hi = pct(yView, 98);
     const pad = Math.max((hi - lo) * 0.15, 0.5);
     const yMin = lo - pad;
     const yMax = hi + pad;
     const ySpan = yMax - yMin || 1;
 
-    const tMin = t[0];
-    const tMax = t[t.length - 1] || tMin + 1;
+    const tMin = tView[0];
+    const tMax = tView[tView.length - 1] || tMin + 1;
     const tSpan = tMax - tMin || 1;
 
     const px = (ti: number) => ((ti - tMin) / tSpan) * width;
-    const py = (v: number) => height - ((v - yMin) / ySpan) * height;
+    const py = (v: number)  => height - ((v - yMin) / ySpan) * height;
 
-    // Grid lines
     ctx.strokeStyle = '#1e1e2e';
     ctx.lineWidth = 1;
     for (let i = 1; i < 4; i++) {
@@ -58,7 +73,6 @@ export function Waveform({ t, y, width = 600, height = 140, color = '#4488ff', l
       ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(width, gy); ctx.stroke();
     }
 
-    // Zero line (dashed)
     const zy = py(0);
     if (zy > 0 && zy < height) {
       ctx.strokeStyle = '#303050';
@@ -68,31 +82,47 @@ export function Waveform({ t, y, width = 600, height = 140, color = '#4488ff', l
       ctx.setLineDash([]);
     }
 
-    // Waveform
     ctx.beginPath();
     ctx.strokeStyle = color;
     ctx.lineWidth = 1.2;
-    t.forEach((ti, i) => {
+    tView.forEach((ti, i) => {
       const x = px(ti);
-      const yv = py(y[i]);
+      const yv = py(yView[i]);
       if (i === 0) ctx.moveTo(x, yv);
       else ctx.lineTo(x, yv);
     });
     ctx.stroke();
 
-    // µV range label
     ctx.fillStyle = '#44445a';
     ctx.font = '9px ui-monospace, monospace';
     ctx.fillText(`${yMax.toFixed(0)}µV`, 3, 10);
     ctx.fillText(`${yMin.toFixed(0)}µV`, 3, height - 3);
 
-    // Label
     if (label) {
       ctx.fillStyle = '#55556a';
       ctx.font = '10px ui-monospace, monospace';
       ctx.fillText(label, width - ctx.measureText(label).width - 4, height - 3);
     }
-  }, [t, y, width, height, color, label]);
+  }, [tView, yView, width, height, color, label]);
 
-  return <canvas ref={canvasRef} style={{ display: 'block' }} />;
+  const settingsPanel = (
+    <>
+      <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 600, letterSpacing: '0.06em' }}>Waveform Settings</div>
+      <Slider
+        label="View window"
+        min={1} max={Math.max(8, maxView)} step={0.5}
+        value={viewSec}
+        onChange={setViewSec}
+        format={(v) => `${v.toFixed(1)}s`}
+      />
+    </>
+  );
+
+  return (
+    <ComponentSettings settings={settingsPanel}>
+      <div ref={size.wrapRef} style={{ width: '100%', height }}>
+        <canvas ref={canvasRef} style={{ display: 'block' }} />
+      </div>
+    </ComponentSettings>
+  );
 }

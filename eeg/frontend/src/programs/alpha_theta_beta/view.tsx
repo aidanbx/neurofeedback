@@ -1,31 +1,51 @@
-import { useEffect, useRef, useState, type MutableRefObject, type Dispatch, type SetStateAction } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useProgramStore } from '../../state/programStore';
 import { useDeviceStore } from '../../state/deviceStore';
 import { api } from '../../api/client';
 import { useAudioScene } from '../../audio/useAudioScene';
 import { ProgramLayout } from '../ProgramLayout';
 import { Section } from '../../components/controls/Section';
-import { LoggedSlider, LoggedTrackPicker, ProgramParamSlider } from '../../components/controls/Instrumented';
+import { LoggedSlider, ProgramParamSlider } from '../../components/controls/Instrumented';
 import { SessionControls } from '../../components/session/SessionControls';
 import { StatsGrid } from '../../components/session/StatsGrid';
-import { BandBars } from '../../components/graphs/BandBars';
-import { TimelineChart } from '../../components/graphs/TimelineChart';
 import { PSDPlot } from '../../components/graphs/PSDPlot';
+import { NeurofeedbackCharts } from '../../components/graphs/NeurofeedbackCharts';
 import { Waveform } from '../../components/graphs/Waveform';
 import { Panel } from '../../components/layout/Panel';
+import { AudioTrackPlayer } from '../../components/audio/AudioTrackPlayer';
+
+const BROWN_NOISE_URL = '/audio/tracks/Brown%20Noise.mp3';
+const CREEK_URL = '/audio/tracks/Creek.mp3';
+const ALPHA_WAVES_URL = '/audio/tracks/Alpha%20Waves.mp3';
+const BIRDS_URL = '/audio/tracks/Birds.mp3';
 
 interface ATBPayload {
   mode: string;
   drives: { alpha: number; theta: number; beta: number };
+  thresholds: { alpha: number; theta: number; beta: number };
   alpha_clarity: number;
   theta_clarity: number;
   beta_clarity: number;
+  alpha_value: number;
+  theta_value: number;
+  beta_value: number;
   alpha_samples: number;
   theta_samples: number;
   beta_samples: number;
 }
 
-type Pt = { x: number; y: number };
+type ATBHistoryPoint = {
+  x: number;
+  alphaValue: number;
+  thetaValue: number;
+  betaValue: number;
+  alphaThreshold: number;
+  thetaThreshold: number;
+  betaThreshold: number;
+  alphaClarity: number;
+  thetaClarity: number;
+  betaClarity: number;
+};
 
 export default function AlphaThetaBetaView() {
   const programOutput = useProgramStore((s) => s.programOutput);
@@ -36,20 +56,22 @@ export default function AlphaThetaBetaView() {
 
   const [masterVol,    setMasterVol]    = useState(0.8);
   const [responseTime, setResponseTime] = useState(1.2);
+  const [chartWindowSec, setChartWindowSec] = useState(120);
+  const [showThresholds, setShowThresholds] = useState(true);
 
-  const [alphaBase,  setAlphaBase]  = useState('silence');
-  const [alphaClear, setAlphaClear] = useState('silence');
-  const [alphaBaseV, setAlphaBaseV] = useState(0.9);
+  const [alphaBase,  setAlphaBase]  = useState(BROWN_NOISE_URL);
+  const [alphaClear, setAlphaClear] = useState(CREEK_URL);
+  const [alphaBaseV, setAlphaBaseV] = useState(0.15);
   const [alphaClearV,setAlphaClearV]= useState(0.9);
 
-  const [thetaBase,  setThetaBase]  = useState('silence');
-  const [thetaClear, setThetaClear] = useState('silence');
-  const [thetaBaseV, setThetaBaseV] = useState(0.9);
+  const [thetaBase,  setThetaBase]  = useState(BROWN_NOISE_URL);
+  const [thetaClear, setThetaClear] = useState(ALPHA_WAVES_URL);
+  const [thetaBaseV, setThetaBaseV] = useState(0.15);
   const [thetaClearV,setThetaClearV]= useState(0.9);
 
-  const [betaBase,   setBetaBase]   = useState('silence');
-  const [betaClear,  setBetaClear]  = useState('silence');
-  const [betaBaseV,  setBetaBaseV]  = useState(0.9);
+  const [betaBase,   setBetaBase]   = useState(BROWN_NOISE_URL);
+  const [betaClear,  setBetaClear]  = useState(BIRDS_URL);
+  const [betaBaseV,  setBetaBaseV]  = useState(0.15);
   const [betaClearV, setBetaClearV] = useState(0.9);
 
   const [params, setParams] = useState<Record<string, unknown>>({
@@ -58,9 +80,9 @@ export default function AlphaThetaBetaView() {
     beta_reward_pct: 65,
   });
 
-  const aHistRef = useRef<Pt[]>([]); const [aHist, setAHist] = useState<Pt[]>([]);
-  const tHistRef = useRef<Pt[]>([]); const [tHist, setTHist] = useState<Pt[]>([]);
-  const bHistRef = useRef<Pt[]>([]); const [bHist, setBHist] = useState<Pt[]>([]);
+  const feedbackHistRef = useRef<ATBHistoryPoint[]>([]);
+  const modeRef = useRef<string>('—');
+  const [feedbackHistory, setFeedbackHistory] = useState<ATBHistoryPoint[]>([]);
 
   const payload = programOutput?.payload as ATBPayload | undefined;
   const mode    = payload?.mode ?? '—';
@@ -78,17 +100,51 @@ export default function AlphaThetaBetaView() {
       .catch(() => {});
   }, []);
 
-  const push = (ref: MutableRefObject<Pt[]>, y: number, set: Dispatch<SetStateAction<Pt[]>>, elapsed: number) => {
-    ref.current = [...ref.current.slice(-300), { x: elapsed, y }];
-    set([...ref.current]);
+  useEffect(() => () => {
+    alphaScene.destroy();
+    thetaScene.destroy();
+    betaScene.destroy();
+  }, [alphaScene, betaScene, thetaScene]);
+
+  const toUrl = (u: string) => u === 'silence' ? null : u;
+
+  const loadScenes = async () => {
+    await Promise.all([
+      alphaScene.load(toUrl(alphaBase), toUrl(alphaClear)),
+      thetaScene.load(toUrl(thetaBase), toUrl(thetaClear)),
+      betaScene.load(toUrl(betaBase), toUrl(betaClear)),
+    ]);
   };
 
   useEffect(() => {
     if (!payload || !programOutput) return;
+    if (payload.mode !== 'rolling') {
+      modeRef.current = payload.mode;
+      feedbackHistRef.current = [];
+      setFeedbackHistory([]);
+      return;
+    }
+    if (modeRef.current !== 'rolling') {
+      feedbackHistRef.current = [];
+    }
+    modeRef.current = payload.mode;
     const e = programOutput.elapsed;
-    push(aHistRef, payload.alpha_clarity, setAHist, e);
-    push(tHistRef, payload.theta_clarity, setTHist, e);
-    push(bHistRef, payload.beta_clarity,  setBHist, e);
+    feedbackHistRef.current = [
+      ...feedbackHistRef.current.slice(-720),
+      {
+        x: e,
+        alphaValue: payload.alpha_value,
+        thetaValue: payload.theta_value,
+        betaValue: payload.beta_value,
+        alphaThreshold: payload.thresholds.alpha,
+        thetaThreshold: payload.thresholds.theta,
+        betaThreshold: payload.thresholds.beta,
+        alphaClarity: payload.alpha_clarity,
+        thetaClarity: payload.theta_clarity,
+        betaClarity: payload.beta_clarity,
+      },
+    ];
+    setFeedbackHistory([...feedbackHistRef.current]);
 
     const vol = masterVol;
     alphaScene.setVolume(vol); thetaScene.setVolume(vol); betaScene.setVolume(vol);
@@ -104,15 +160,17 @@ export default function AlphaThetaBetaView() {
     alphaBaseV, alphaClearV, thetaBaseV, thetaClearV, betaBaseV, betaClearV,
   ]);
 
-  const toUrl = (u: string) => u === 'silence' ? null : u;
+  const handleTrainingStarted = async () => {
+    alphaScene.play();
+    thetaScene.play();
+    betaScene.play();
+    await loadScenes();
+  };
 
-  const handleLoadAll = async () => {
-    await Promise.all([
-      alphaScene.load(toUrl(alphaBase), toUrl(alphaClear)),
-      thetaScene.load(toUrl(thetaBase), toUrl(thetaClear)),
-      betaScene.load(toUrl(betaBase),   toUrl(betaClear)),
-    ]);
-    alphaScene.play(); thetaScene.play(); betaScene.play();
+  const handleTrainingStopped = () => {
+    alphaScene.stop();
+    thetaScene.stop();
+    betaScene.stop();
   };
 
   const stats = payload ? [
@@ -131,21 +189,28 @@ export default function AlphaThetaBetaView() {
           <Panel title="EEG Waveform">
             <Waveform t={metrics.live_trace_t} y={metrics.live_trace_y} width={700} height={120} />
           </Panel>
-          <Panel title="Band Power">
-            <BandBars bands={metrics.bands} mode="smoothed" />
-          </Panel>
         </>
       )}
 
-      <Panel title="Clarity History (2 min)">
-        <TimelineChart
-          series={[
-            { label: 'Alpha', color: '#f0cc44', points: aHist, threshold: 0.5 },
-            { label: 'Theta', color: '#55bb88', points: tHist, threshold: 0.5 },
-            { label: 'Beta',  color: '#e05050', points: bHist, threshold: 0.5 },
+      <Panel bodyStyle={{ padding: 0 }}>
+        <NeurofeedbackCharts
+          points={feedbackHistory}
+          bandDefs={[
+            { key: 'alpha', label: 'Alpha', color: '#f0cc44', value: (point) => point.alphaValue, threshold: (point) => point.alphaThreshold },
+            { key: 'theta', label: 'Theta', color: '#55bb88', value: (point) => point.thetaValue, threshold: (point) => point.thetaThreshold },
+            { key: 'beta', label: 'Beta', color: '#e05050', value: (point) => point.betaValue, threshold: (point) => point.betaThreshold },
           ]}
-          width={700} height={180}
-          windowSec={120} yMin={0} yMax={1}
+          clarityDefs={[
+            { key: 'alpha_clarity', label: 'Alpha', color: '#f0cc44', value: (point) => point.alphaClarity },
+            { key: 'theta_clarity', label: 'Theta', color: '#55bb88', value: (point) => point.thetaClarity },
+            { key: 'beta_clarity', label: 'Beta', color: '#e05050', value: (point) => point.betaClarity },
+          ]}
+          chartWindowSec={chartWindowSec}
+          onChartWindowSecChange={setChartWindowSec}
+          showThresholds={showThresholds}
+          onShowThresholdsChange={setShowThresholds}
+          emptyLabel="Waiting for rolling baseline before charting."
+          barBands={['Alpha', 'Theta', 'Beta']}
         />
       </Panel>
 
@@ -164,44 +229,72 @@ export default function AlphaThetaBetaView() {
 
   const sidebar = (
     <>
-      <Section title="Alpha Audio">
-        <LoggedTrackPicker label="Base"  value={alphaBase}  onChange={setAlphaBase}  programId="alpha_theta_beta" eventKey="alpha.base_track" />
-        <LoggedTrackPicker label="Clear" value={alphaClear} onChange={setAlphaClear} programId="alpha_theta_beta" eventKey="alpha.clear_track" />
+      <Section title="Audio Preview" collapsible defaultOpen={false}>
+        <AudioTrackPlayer
+          label="Alpha base"
+          programId="alpha_theta_beta"
+          eventPrefix="alpha.base_track"
+          selectedUrl={alphaBase}
+          onSelectedUrlChange={setAlphaBase}
+        />
+        <AudioTrackPlayer
+          label="Alpha clear"
+          programId="alpha_theta_beta"
+          eventPrefix="alpha.clear_track"
+          selectedUrl={alphaClear}
+          onSelectedUrlChange={setAlphaClear}
+        />
         <LoggedSlider label="Base vol"  min={0} max={100} step={1} value={Math.round(alphaBaseV  * 100)} onChange={(v) => { const next = v / 100; setAlphaBaseV(next); alphaScene.setTrackVolumes(next, alphaClearV); }} format={(v) => `${v}%`} programId="alpha_theta_beta" eventKey="alpha.base_volume_pct" />
         <LoggedSlider label="Clear vol" min={0} max={100} step={1} value={Math.round(alphaClearV * 100)} onChange={(v) => { const next = v / 100; setAlphaClearV(next); alphaScene.setTrackVolumes(alphaBaseV, next); }} format={(v) => `${v}%`} programId="alpha_theta_beta" eventKey="alpha.clear_volume_pct" />
-        <ProgramParamSlider label="Reward rate" min={40} max={85} step={1} value={paramNumber('alpha_reward_pct', 65)} onResolved={mergeParams} programId="alpha_theta_beta" paramKey="alpha_reward_pct" format={(v) => `${v}%`} />
-      </Section>
-
-      <Section title="Theta Audio">
-        <LoggedTrackPicker label="Base"  value={thetaBase}  onChange={setThetaBase}  programId="alpha_theta_beta" eventKey="theta.base_track" />
-        <LoggedTrackPicker label="Clear" value={thetaClear} onChange={setThetaClear} programId="alpha_theta_beta" eventKey="theta.clear_track" />
+        <AudioTrackPlayer
+          label="Theta base"
+          programId="alpha_theta_beta"
+          eventPrefix="theta.base_track"
+          selectedUrl={thetaBase}
+          onSelectedUrlChange={setThetaBase}
+        />
+        <AudioTrackPlayer
+          label="Theta clear"
+          programId="alpha_theta_beta"
+          eventPrefix="theta.clear_track"
+          selectedUrl={thetaClear}
+          onSelectedUrlChange={setThetaClear}
+        />
         <LoggedSlider label="Base vol"  min={0} max={100} step={1} value={Math.round(thetaBaseV  * 100)} onChange={(v) => { const next = v / 100; setThetaBaseV(next); thetaScene.setTrackVolumes(next, thetaClearV); }} format={(v) => `${v}%`} programId="alpha_theta_beta" eventKey="theta.base_volume_pct" />
         <LoggedSlider label="Clear vol" min={0} max={100} step={1} value={Math.round(thetaClearV * 100)} onChange={(v) => { const next = v / 100; setThetaClearV(next); thetaScene.setTrackVolumes(thetaBaseV, next); }} format={(v) => `${v}%`} programId="alpha_theta_beta" eventKey="theta.clear_volume_pct" />
-        <ProgramParamSlider label="Reward rate" min={40} max={85} step={1} value={paramNumber('theta_reward_pct', 65)} onResolved={mergeParams} programId="alpha_theta_beta" paramKey="theta_reward_pct" format={(v) => `${v}%`} />
-      </Section>
-
-      <Section title="Beta Audio">
-        <LoggedTrackPicker label="Base"  value={betaBase}  onChange={setBetaBase}  programId="alpha_theta_beta" eventKey="beta.base_track" />
-        <LoggedTrackPicker label="Clear" value={betaClear} onChange={setBetaClear} programId="alpha_theta_beta" eventKey="beta.clear_track" />
+        <AudioTrackPlayer
+          label="Beta base"
+          programId="alpha_theta_beta"
+          eventPrefix="beta.base_track"
+          selectedUrl={betaBase}
+          onSelectedUrlChange={setBetaBase}
+        />
+        <AudioTrackPlayer
+          label="Beta clear"
+          programId="alpha_theta_beta"
+          eventPrefix="beta.clear_track"
+          selectedUrl={betaClear}
+          onSelectedUrlChange={setBetaClear}
+        />
         <LoggedSlider label="Base vol"  min={0} max={100} step={1} value={Math.round(betaBaseV  * 100)} onChange={(v) => { const next = v / 100; setBetaBaseV(next); betaScene.setTrackVolumes(next, betaClearV); }} format={(v) => `${v}%`} programId="alpha_theta_beta" eventKey="beta.base_volume_pct" />
         <LoggedSlider label="Clear vol" min={0} max={100} step={1} value={Math.round(betaClearV * 100)} onChange={(v) => { const next = v / 100; setBetaClearV(next); betaScene.setTrackVolumes(betaBaseV, next); }} format={(v) => `${v}%`} programId="alpha_theta_beta" eventKey="beta.clear_volume_pct" />
-        <ProgramParamSlider label="Reward rate" min={40} max={85} step={1} value={paramNumber('beta_reward_pct', 65)} onResolved={mergeParams} programId="alpha_theta_beta" paramKey="beta_reward_pct" format={(v) => `${v}%`} />
       </Section>
 
-      <button className="btn btn-accent btn-full" onClick={handleLoadAll}>Load All &amp; Preview</button>
-
-      <Section title="Settings">
+      <Section title="Settings" collapsible defaultOpen={false}>
+        <ProgramParamSlider label="Alpha reward rate" min={40} max={85} step={1} value={paramNumber('alpha_reward_pct', 65)} onResolved={mergeParams} programId="alpha_theta_beta" paramKey="alpha_reward_pct" format={(v) => `${v}%`} />
+        <ProgramParamSlider label="Theta reward rate" min={40} max={85} step={1} value={paramNumber('theta_reward_pct', 65)} onResolved={mergeParams} programId="alpha_theta_beta" paramKey="theta_reward_pct" format={(v) => `${v}%`} />
+        <ProgramParamSlider label="Beta reward rate" min={40} max={85} step={1} value={paramNumber('beta_reward_pct', 65)} onResolved={mergeParams} programId="alpha_theta_beta" paramKey="beta_reward_pct" format={(v) => `${v}%`} />
         <LoggedSlider label="Master volume" min={0} max={100} step={1} value={Math.round(masterVol * 100)} onChange={(v) => { setMasterVol(v / 100); }} format={(v) => `${v}%`} programId="alpha_theta_beta" eventKey="all.master_volume_pct" />
         <LoggedSlider label="Response time" min={2} max={40} step={1} value={Math.round(responseTime * 10)} onChange={(v) => setResponseTime(v / 10)} format={(v) => `${(v / 10).toFixed(1)}s`} programId="alpha_theta_beta" eventKey="all.response_time_tenths" />
       </Section>
 
       {stats.length > 0 && (
-        <Section title="Stats">
+        <Section title="Stats" collapsible defaultOpen={false}>
           <StatsGrid stats={stats} />
         </Section>
       )}
 
-      <SessionControls programId="alpha_theta_beta" programTitle="Alpha-Theta-Beta Feedback" />
+      <SessionControls programId="alpha_theta_beta" programTitle="Alpha-Theta-Beta Feedback" onStarted={handleTrainingStarted} onStopped={handleTrainingStopped} />
     </>
   );
 

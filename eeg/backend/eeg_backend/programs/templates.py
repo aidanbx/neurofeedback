@@ -100,6 +100,12 @@ class RewardInhibitRuntime(ProgramRuntime):
         b = hi_beta.smoothed if hi_beta else -20.0
         return _log_add_exp(a, b)
 
+    def _combined_beta_log_absolute(self, snap: MetricsSnapshot) -> float:
+        beta = snap.bands.get("Beta")
+        hi_beta = snap.bands.get("Hi-Beta")
+        absolute = (beta.absolute if beta else 0.0) + (hi_beta.absolute if hi_beta else 0.0)
+        return math.log(max(absolute, 1e-12))
+
     def reset(self) -> None:
         for lst in self._calibration.values():
             lst.clear()

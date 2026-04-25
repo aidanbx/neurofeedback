@@ -1,3 +1,5 @@
+import { resolveAudioUrl } from './resolveAudioUrl';
+
 /**
  * Two-track crossfade scene (base + clear) driven by a 0–1 drive value.
  * Direct TypeScript port of NFAudioScene from engine.js.
@@ -99,12 +101,13 @@ export class AudioScene {
   private loadElement(url: string): Promise<HTMLAudioElement> {
     return new Promise((resolve, reject) => {
       const el = new Audio();
+      const resolvedUrl = resolveAudioUrl(url);
       el.loop        = true;
       el.crossOrigin = 'anonymous';
       el.preload     = 'auto';
-      el.src         = url;
+      el.src         = resolvedUrl;
       el.addEventListener('canplay', () => resolve(el), { once: true });
-      el.addEventListener('error',   () => reject(new Error(`Failed to load: ${url}`)), { once: true });
+      el.addEventListener('error',   () => reject(new Error(`Failed to load: ${resolvedUrl}`)), { once: true });
       el.load();
     });
   }

@@ -18,7 +18,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from ..contracts import BandFeature, MetricsSnapshot, ProgramOutput
 from ..dsp.constants import (
-    BANDS, LIVE_BUF_SEC, METRIC_INTERVAL, SRATE, TRAINING_BANDS,
+    ANALYSIS_INTERVAL_SEC, BANDS, LIVE_BUF_SEC, LOGGING_INTERVAL_SEC, SRATE, TRAINING_BANDS,
 )
 from ..dsp.pipeline import (
     apply_view_processing, compute_frame_metrics, compute_psd,
@@ -79,9 +79,12 @@ class SessionApp:
             for _ in range(NUM_CHANNELS)
         ]
         self.artifact_rejection = False
+        self.notch_60hz = False
+        self.metric_interval = 0.25  # seconds between WebSocket broadcasts
 
         self.latest_snap: MetricsSnapshot | None = None
         self.latest_program_output: ProgramOutput | None = None
+        self.snap_queue: deque[MetricsSnapshot] = deque(maxlen=60)
 
         self.recorder        = SessionRecorder()
         self.event_log       = SessionEventLog(self.recorder)
@@ -162,7 +165,7 @@ class SessionApp:
                 self._update_metrics()
             except Exception as exc:
                 log.error("Analysis error: %s", exc)
-            time.sleep(0.25)
+            time.sleep(ANALYSIS_INTERVAL_SEC)
 
     def _update_metrics(self) -> None:
         now = time.monotonic()
@@ -171,12 +174,13 @@ class SessionApp:
             channels    = [np.asarray(buf, dtype=float) for buf in self.live_buffers]
             recording   = self.recorder.recording
             started_at  = self.recorder.recording_started_at
-            should_log  = recording and (now - self.recorder.last_metric_monotonic >= METRIC_INTERVAL)
+            should_log  = recording and (now - self.recorder.last_metric_monotonic >= LOGGING_INTERVAL_SEC)
             art_rej     = self.artifact_rejection
+            notch_60hz  = self.notch_60hz
             elapsed     = self.recorder.session_duration_sec()
             prog_id     = self.active_program_id
 
-        frame = compute_frame_metrics(live, channels, CHANNEL, art_rej, ADC_MAX_UV)
+        frame = compute_frame_metrics(live, channels, CHANNEL, art_rej, notch_60hz, ADC_MAX_UV)
         if frame is None:
             return
 
@@ -195,9 +199,18 @@ class SessionApp:
             "Beta":    frame.relative_4_30_training.beta,
             "Hi-Beta": frame.relative_4_30_training.hi_beta,
         }
+        relative_1_30_d = {
+            "Delta":   frame.relative_1_30_training.delta,
+            "Theta":   frame.relative_1_30_training.theta,
+            "Alpha":   frame.relative_1_30_training.alpha,
+            "SMR":     frame.relative_1_30_training.smr,
+            "Beta":    frame.relative_1_30_training.beta,
+            "Hi-Beta": frame.relative_1_30_training.hi_beta,
+        }
 
         band_features = self.metrics_engine.update(
             absolute=absolute_d,
+            relative_1_30=relative_1_30_d,
             relative_4_30=relative_4_30_d,
             quality_score=frame.quality_score,
             artifact_fraction=frame.artifact_fraction,
@@ -207,6 +220,8 @@ class SessionApp:
         import math
         band_features["Delta"] = BandFeature(
             absolute=delta_abs,
+            relative_1_30=relative_1_30_d.get("Delta", 0.0),
+            relative_4_30=0.0,
             log_absolute=math.log(max(delta_abs, 1e-12)),
             baseline_delta=0.0,
             baseline_zscore=0.0,
@@ -222,8 +237,13 @@ class SessionApp:
             quality_score=frame.quality_score,
             quality_label=frame.quality_label,
             artifact_fraction=frame.artifact_fraction,
+            common_mode_corr=frame.common_mode_corr,
+            slow_wave_ratio=frame.slow_wave_ratio,
+            line_noise_ratio=frame.line_noise_ratio,
             psd_freqs=frame.psd_freqs,
             psd_values=frame.psd_values,
+            raw_psd_freqs=frame.raw_psd_freqs,
+            raw_psd_values=frame.raw_psd_values,
             live_trace_t=frame.live_trace_t,
             live_trace_y=frame.live_trace_y,
             bands=band_features,
@@ -239,6 +259,7 @@ class SessionApp:
 
         with self.lock:
             self.latest_snap           = snap
+            self.snap_queue.append(snap)
             self.latest_program_output = program_out
 
             if should_log and started_at is not None:
@@ -259,12 +280,17 @@ class SessionApp:
             "artifact_gate":    f"{float(params.get('artifact_gate', 0.0)):.4f}",
             "quality_score":    f"{snap.quality_score:.2f}",
             "artifact_fraction":f"{snap.artifact_fraction:.4f}",
+            "common_mode_corr": f"{snap.common_mode_corr:.4f}",
+            "slow_wave_ratio":  f"{snap.slow_wave_ratio:.4f}",
+            "line_noise_ratio": f"{snap.line_noise_ratio:.4f}",
         }
         for name in TRAINING_BANDS:
             key  = name.lower().replace("-", "_")
             feat = tf.get(name)
             row[f"{key}_rel_pct"]           = f"{rel.get(name, 0.0):.4f}"
             row[f"{key}_absolute"]          = f"{feat.absolute:.6f}" if feat else "0.0"
+            row[f"{key}_relative_1_30"]      = f"{feat.relative_1_30:.4f}" if feat else "0.0"
+            row[f"{key}_relative_4_30"]      = f"{feat.relative_4_30:.4f}" if feat else "0.0"
             row[f"{key}_log_absolute"]      = f"{feat.log_absolute:.4f}" if feat else "0.0"
             row[f"{key}_baseline_delta"]    = f"{feat.baseline_delta:.4f}" if feat else "0.0"
             row[f"{key}_baseline_zscore"]   = f"{feat.baseline_zscore:.4f}" if feat else "0.0"
@@ -290,6 +316,7 @@ class SessionApp:
             "test_mode":        replay_snap.get("test_mode", False),
             "recording":        recording,
             "artifact_rejection": self.artifact_rejection,
+            "notch_60hz":       self.notch_60hz,
             "duration_sec":     duration,
             "metrics":          snap_dict,
             "active_program":   self.active_program_id,
@@ -433,17 +460,18 @@ async def websocket_stream(websocket: WebSocket):
 
 async def _broadcast_loop() -> None:
     while True:
-        await asyncio.sleep(0.25)  # 4 Hz
+        await asyncio.sleep(APP.metric_interval)
         with APP.lock:
-            snap    = APP.latest_snap
+            snaps    = list(APP.snap_queue)
+            APP.snap_queue.clear()
             prog_out = APP.latest_program_output
 
-        if snap is None:
+        if not snaps:
             continue
 
         msg = {
             "type": "metrics",
-            "data": asdict(snap),
+            "data": [asdict(s) for s in snaps],
             "program_output": asdict(prog_out) if prog_out else None,
         }
         await manager.broadcast(msg)

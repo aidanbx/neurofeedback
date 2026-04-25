@@ -8,7 +8,6 @@ import numpy as np
 from ...contracts import MetricsSnapshot, ProgramOutput
 from ..templates import RewardInhibitRuntime, _quantile
 
-DEFAULT_DSP_RANGE      = 3.0
 DEFAULT_REWARD_PCT     = 65.0
 DEFAULT_THETA_INHIB    = 15.0
 DEFAULT_BETA_INHIB     = 15.0
@@ -55,9 +54,9 @@ class AlphaFeedbackRuntime(RewardInhibitRuntime):
         alpha = snap.bands.get("Alpha")
         theta = snap.bands.get("Theta")
 
-        alpha_val  = alpha.smoothed if alpha else 0.0
-        theta_val  = theta.smoothed if theta else 0.0
-        beta_val   = self._combined_beta_smoothed(snap)
+        alpha_val  = alpha.log_absolute if alpha else 0.0
+        theta_val  = theta.log_absolute if theta else 0.0
+        beta_val   = self._combined_beta_log_absolute(snap)
 
         combined_beta = beta_val
 
@@ -71,25 +70,20 @@ class AlphaFeedbackRuntime(RewardInhibitRuntime):
         enough = self._enough_samples()
         counts = {k: len(v) for k, v in self._calibration.items()}
 
-        def _norm(v: float) -> float:
-            r = DEFAULT_DSP_RANGE
-            return float(np.clip((v + r) / (2 * r) * 100, 0, 100))
-
-        alpha_norm = _norm(alpha_val)
-        theta_norm = _norm(theta_val)
-        beta_norm  = _norm(combined_beta)
-
         if not enough:
-            alpha_threshold = 100.0 - self._reward_target_pct
-            theta_threshold = 100.0 - self._theta_inhibit_pct
-            beta_threshold  = 100.0 - self._beta_inhibit_pct
-            theta_inhibit   = theta_norm >= theta_threshold
-            beta_inhibit    = beta_norm  >= beta_threshold
+            alpha_vals = [v for _, v in self._calibration["Alpha"]]
+            theta_vals = [v for _, v in self._calibration["Theta"]]
+            beta_vals  = [v for _, v in self._calibration["Beta"]]
+            alpha_threshold = self._threshold_from_target("Alpha", self._reward_target_pct) if alpha_vals else alpha_val
+            theta_threshold = self._threshold_from_target("Theta", self._theta_inhibit_pct) if theta_vals else theta_val
+            beta_threshold  = self._threshold_from_target("Beta",  self._beta_inhibit_pct) if beta_vals else combined_beta
+            theta_inhibit   = theta_val >= theta_threshold
+            beta_inhibit    = combined_beta  >= beta_threshold
             inhibit_active  = theta_inhibit or beta_inhibit
-            clarity = 0.0 if inhibit_active else self._clarity_from_range(
-                alpha_norm, alpha_threshold, 0.0, 100.0
-            )
-            reward_active = not inhibit_active and alpha_norm >= alpha_threshold
+            alpha_low = min(alpha_vals) if alpha_vals else alpha_val - 0.25
+            alpha_high = max(alpha_vals) if alpha_vals else alpha_val + 0.25
+            clarity = 0.0 if inhibit_active else self._clarity_from_range(alpha_val, alpha_threshold, alpha_low, alpha_high)
+            reward_active = not inhibit_active and alpha_val >= alpha_threshold
             mode = "warm_start"
         else:
             alpha_vals = [v for _, v in self._calibration["Alpha"]]
@@ -124,9 +118,9 @@ class AlphaFeedbackRuntime(RewardInhibitRuntime):
             alpha_value=round(alpha_val,   4),
             theta_value=round(theta_val,   4),
             beta_value= round(combined_beta, 4),
-            alpha_norm= round(alpha_norm,  2),
-            theta_norm= round(theta_norm,  2),
-            beta_norm=  round(beta_norm,   2),
+            alpha_norm= round(alpha_val,  4),
+            theta_norm= round(theta_val,  4),
+            beta_norm=  round(combined_beta,   4),
             alpha_samples=counts.get("Alpha", 0),
             theta_samples=counts.get("Theta", 0),
             beta_samples= counts.get("Beta",  0),

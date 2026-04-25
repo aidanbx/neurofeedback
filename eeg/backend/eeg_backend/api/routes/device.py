@@ -18,6 +18,10 @@ class TestModeBody(BaseModel):
     session_id: str | None = None
 
 
+class MetricIntervalBody(BaseModel):
+    interval_sec: float
+
+
 @router.post("/connect-toggle")
 async def connect_toggle():
     _app.ble.toggle_connection()
@@ -53,6 +57,26 @@ async def artifact_toggle():
         data={"value": value},
     )
     return {"ok": True, "value": value}
+
+
+@router.post("/notch-toggle")
+async def notch_toggle():
+    with _app.lock:
+        _app.notch_60hz = not _app.notch_60hz
+        value = _app.notch_60hz
+    _app.event_log.append(
+        "NotchFilterChanged",
+        source="ui",
+        data={"value": value, "frequency_hz": 60},
+    )
+    return {"ok": True, "value": value}
+
+
+@router.post("/set-metric-interval")
+async def set_metric_interval(body: MetricIntervalBody):
+    interval = max(0.05, min(5.0, body.interval_sec))
+    _app.metric_interval = interval
+    return {"ok": True, "interval_sec": interval}
 
 
 @router.get("/state")

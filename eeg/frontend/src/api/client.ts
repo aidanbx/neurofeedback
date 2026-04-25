@@ -21,6 +21,11 @@ export const api = {
       body: JSON.stringify({ session_id: sessionId ?? null }),
     }),
   artifactToggle:     () => request<{ ok: boolean }>('/artifact-toggle', { method: 'POST', body: '{}' }),
+  notchToggle:        () => request<{ ok: boolean; value: boolean }>('/notch-toggle', { method: 'POST', body: '{}' }),
+  setMetricInterval:  (interval_sec: number) =>
+    request<{ ok: boolean; interval_sec: number }>('/set-metric-interval', {
+      method: 'POST', body: JSON.stringify({ interval_sec }),
+    }),
   getMetricsParams:   () => request<Record<string, unknown>>('/metrics/params'),
   setMetricsParams:   (params: Record<string, unknown>) =>
     request<{ ok: boolean; params: Record<string, unknown>; changes: Record<string, unknown> }>(

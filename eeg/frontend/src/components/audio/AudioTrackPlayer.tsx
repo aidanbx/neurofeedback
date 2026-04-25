@@ -1,6 +1,7 @@
 import type React from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../../api/client';
+import { resolveAudioUrl } from '../../audio/resolveAudioUrl';
 
 interface Track {
   name: string;
@@ -11,14 +12,9 @@ interface Track {
 interface Props {
   programId?: string;
   eventPrefix?: string;
-}
-
-function resolveAudioUrl(url: string): string {
-  if (!url || url === 'silence') return '';
-  if (/^https?:\/\//.test(url)) return url;
-  const apiUrl = url.startsWith('/api/') ? url : `/api${url}`;
-  if (window.location.protocol === 'file:') return `http://127.0.0.1:8765${apiUrl}`;
-  return apiUrl;
+  label?: string;
+  selectedUrl?: string;
+  onSelectedUrlChange?: (url: string) => void;
 }
 
 function fmtTime(sec: number): string {
@@ -44,21 +40,29 @@ function buildPeaks(buffer: AudioBuffer, count: number): number[] {
   return peaks;
 }
 
-export function AudioTrackPlayer({ programId, eventPrefix = 'audio_player' }: Props) {
+export function AudioTrackPlayer({
+  programId,
+  eventPrefix = 'audio_player',
+  label = 'Track',
+  selectedUrl,
+  onSelectedUrlChange,
+}: Props) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
 
   const [tracks, setTracks] = useState<Track[]>([]);
-  const [selectedUrl, setSelectedUrl] = useState('silence');
+  const [internalSelectedUrl, setInternalSelectedUrl] = useState('silence');
   const [peaks, setPeaks] = useState<number[]>([]);
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [volume, setVolume] = useState(0.8);
   const [status, setStatus] = useState('Select a track');
+  const [previewOpen, setPreviewOpen] = useState(false);
 
-  const resolvedUrl = resolveAudioUrl(selectedUrl);
+  const currentSelectedUrl = selectedUrl ?? internalSelectedUrl;
+  const resolvedUrl = resolveAudioUrl(currentSelectedUrl);
 
   const log = (key: string, value: unknown, extra: Record<string, unknown> = {}) => {
     api.logEvent({
@@ -164,7 +168,8 @@ export function AudioTrackPlayer({ programId, eventPrefix = 'audio_player' }: Pr
   }, [peaks, currentTime, duration]);
 
   const handleSelect = (url: string) => {
-    setSelectedUrl(url);
+    if (selectedUrl == null) setInternalSelectedUrl(url);
+    onSelectedUrlChange?.(url);
     const track = tracks.find((t) => t.url === url);
     log('track', url, { track_name: track?.name ?? null });
   };
@@ -207,6 +212,11 @@ export function AudioTrackPlayer({ programId, eventPrefix = 'audio_player' }: Pr
     log('volume_pct', nextPct);
   };
 
+  const togglePreview = () => {
+    setPreviewOpen((open) => !open);
+    log('preview_toggle', !previewOpen);
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       <audio
@@ -216,57 +226,66 @@ export function AudioTrackPlayer({ programId, eventPrefix = 'audio_player' }: Pr
         onEnded={() => setPlaying(false)}
       />
 
-      <label style={{ display: 'flex', flexDirection: 'column', gap: 2, fontSize: '0.85em' }}>
-        <span>Track</span>
-        <select value={selectedUrl} onChange={(e) => handleSelect(e.target.value)} style={{ width: '100%' }}>
-          <option value="silence">- Select track -</option>
-          {tracks.map((track) => (
-            <option key={track.url} value={track.url}>{track.name}</option>
-          ))}
-        </select>
-      </label>
-
-      <canvas
-        ref={canvasRef}
-        onClick={handleWaveformClick}
-        style={{ display: 'block', width: '100%', cursor: resolvedUrl ? 'pointer' : 'default', border: '1px solid var(--border)' }}
-      />
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <button className="btn btn-accent" onClick={togglePlay} disabled={!resolvedUrl}>
-          {playing ? 'Pause' : 'Play'}
-        </button>
-        <span style={{ fontSize: 11, color: 'var(--muted)', minWidth: 76 }}>
-          {fmtTime(currentTime)} / {fmtTime(duration)}
-        </span>
-        <input
-          type="range"
-          min={0}
-          max={duration || 0}
-          step={0.01}
-          value={Math.min(currentTime, duration || 0)}
-          onChange={(e) => seekTo(Number(e.target.value) / Math.max(duration, 1))}
-          style={{ flex: 1 }}
-          disabled={!duration}
-        />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, fontSize: '0.85em' }}>
+        <span>{label}</span>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <select value={currentSelectedUrl} onChange={(e) => handleSelect(e.target.value)} style={{ width: '100%' }}>
+            <option value="silence">- Select track -</option>
+            {tracks.map((track) => (
+              <option key={track.url} value={track.url}>{track.name}</option>
+            ))}
+          </select>
+          <button className="btn" type="button" onClick={togglePreview} disabled={!resolvedUrl}>
+            {previewOpen ? 'Hide' : 'Preview'}
+          </button>
+        </div>
       </div>
 
-      <label style={{ display: 'flex', flexDirection: 'column', gap: 3, fontSize: '0.85em' }}>
-        <span style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span style={{ color: 'var(--muted)' }}>Volume</span>
-          <span style={{ color: 'var(--text)', fontWeight: 600 }}>{Math.round(volume * 100)}%</span>
-        </span>
-        <input
-          type="range"
-          min={0}
-          max={100}
-          step={1}
-          value={Math.round(volume * 100)}
-          onChange={(e) => handleVolume(Number(e.target.value))}
-        />
-      </label>
+      {previewOpen && (
+        <>
+          <canvas
+            ref={canvasRef}
+            onClick={handleWaveformClick}
+            style={{ display: 'block', width: '100%', cursor: resolvedUrl ? 'pointer' : 'default', border: '1px solid var(--border)' }}
+          />
 
-      <div style={{ fontSize: 11, color: 'var(--muted)' }}>{status}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button className="btn btn-accent" onClick={togglePlay} disabled={!resolvedUrl}>
+              {playing ? 'Pause' : 'Play'}
+            </button>
+            <span style={{ fontSize: 11, color: 'var(--muted)', minWidth: 76 }}>
+              {fmtTime(currentTime)} / {fmtTime(duration)}
+            </span>
+            <input
+              type="range"
+              min={0}
+              max={duration || 0}
+              step={0.01}
+              value={Math.min(currentTime, duration || 0)}
+              onChange={(e) => seekTo(Number(e.target.value) / Math.max(duration, 1))}
+              style={{ flex: 1 }}
+              disabled={!duration}
+            />
+          </div>
+
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 3, fontSize: '0.85em' }}>
+            <span style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: 'var(--muted)' }}>Volume</span>
+              <span style={{ color: 'var(--text)', fontWeight: 600 }}>{Math.round(volume * 100)}%</span>
+            </span>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              step={1}
+              value={Math.round(volume * 100)}
+              onChange={(e) => handleVolume(Number(e.target.value))}
+            />
+          </label>
+
+          <div style={{ fontSize: 11, color: 'var(--muted)' }}>{status}</div>
+        </>
+      )}
     </div>
   );
 }

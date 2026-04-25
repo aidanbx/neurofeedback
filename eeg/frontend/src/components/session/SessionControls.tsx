@@ -29,13 +29,13 @@ export function SessionControls({
   const handleStart = async () => {
     await api.startTraining({ id: programId, title: programTitle });
     setActive(programId);
-    onStarted?.();
+    await onStarted?.();
   };
 
   const handleStop = async () => {
     await api.stopTraining();
-    setActive(null);
-    onStopped?.();
+    setActive(programId);
+    await onStopped?.();
   };
 
   return (

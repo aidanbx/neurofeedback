@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useDeviceStore } from '../state/deviceStore';
 import { QualityBadge } from '../components/session/QualityBadge';
 import { ElapsedTimer } from '../components/session/ElapsedTimer';
@@ -30,6 +30,7 @@ export function ProgramLayout({ title, mode, statusText, calibrating, calibratio
   const metrics  = useDeviceStore((s) => s.metrics);
   const recording = appState?.recording ?? false;
   const elapsed   = metrics?.elapsed_sec ?? 0;
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
@@ -46,13 +47,34 @@ export function ProgramLayout({ title, mode, statusText, calibrating, calibratio
           {recording && <ElapsedTimer elapsed={elapsed} />}
           <RecDot recording={recording} />
         </>}
-        {statusText && <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--muted)' }}>{statusText}</span>}
+        <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+          {statusText && <span style={{ fontSize: 11, color: 'var(--muted)' }}>{statusText}</span>}
+          <button
+            className="btn"
+            type="button"
+            onClick={() => setSidebarCollapsed((collapsed) => !collapsed)}
+            aria-expanded={!sidebarCollapsed}
+            aria-label={sidebarCollapsed ? 'Show settings panel' : 'Hide settings panel'}
+            title={sidebarCollapsed ? 'Show settings panel' : 'Hide settings panel'}
+            style={{ padding: '4px 8px', minWidth: 32, lineHeight: 1 }}
+          >
+            {sidebarCollapsed ? '◀' : '▶'}
+          </button>
+        </span>
       </div>
 
       {/* Body */}
-      <div style={{ flex: 1, overflow: 'hidden', display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(280px, 1fr)' }}>
+      <div
+        style={{
+          flex: 1,
+          overflow: 'hidden',
+          display: 'grid',
+          gridTemplateColumns: sidebarCollapsed ? 'minmax(0, 1fr) 0px' : 'minmax(0, 2fr) minmax(280px, 1fr)',
+          transition: 'grid-template-columns 0.2s ease',
+        }}
+      >
         {/* Main column */}
-        <div style={{ position: 'relative', overflow: 'auto', display: 'flex', flexDirection: 'column', background: '#05060a', borderRight: '1px solid var(--border)' }}>
+        <div style={{ position: 'relative', overflow: 'auto', display: 'flex', flexDirection: 'column', background: '#05060a', borderRight: sidebarCollapsed ? 'none' : '1px solid var(--border)' }}>
           <div style={{ flex: 1, padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
             {main}
           </div>
@@ -77,7 +99,19 @@ export function ProgramLayout({ title, mode, statusText, calibrating, calibratio
         </div>
 
         {/* Sidebar */}
-        <div style={{ overflow: 'auto', padding: 10, display: 'flex', flexDirection: 'column', gap: 8, background: 'var(--sidebar)' }}>
+        <div
+          style={{
+            overflow: 'auto',
+            padding: sidebarCollapsed ? 0 : 10,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 8,
+            background: 'var(--sidebar)',
+            opacity: sidebarCollapsed ? 0 : 1,
+            pointerEvents: sidebarCollapsed ? 'none' : 'auto',
+            transition: 'opacity 0.15s ease, padding 0.15s ease',
+          }}
+        >
           {sidebar}
         </div>
       </div>

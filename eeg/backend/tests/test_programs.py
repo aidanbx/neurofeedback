@@ -11,7 +11,9 @@ from eeg_backend.programs.alpha_theta_beta.runtime import AlphaThetaBetaRuntime
 def make_band(smoothed: float, ready: bool = True, n: int = 50) -> BandFeature:
     return BandFeature(
         absolute=0.5,
-        log_absolute=-0.69,
+        relative_1_30=20.0,
+        relative_4_30=20.0,
+        log_absolute=smoothed,
         baseline_delta=smoothed,
         baseline_zscore=smoothed,
         smoothed=smoothed,
@@ -27,8 +29,13 @@ def make_snap(alpha=0.5, theta=-0.3, beta=-0.3, hi_beta=-0.5, quality=85.0, arti
         quality_score=quality,
         quality_label="good",
         artifact_fraction=artifact,
+        common_mode_corr=0.1,
+        slow_wave_ratio=0.2,
+        line_noise_ratio=0.05,
         psd_freqs=[1.0, 5.0, 10.0],
         psd_values=[0.1, 0.5, 1.0],
+        raw_psd_freqs=[1.0, 5.0, 10.0],
+        raw_psd_values=[0.1, 0.5, 1.0],
         live_trace_t=[0.0, 0.1, 0.2],
         live_trace_y=[1.0, 2.0, 3.0],
         bands={
@@ -39,7 +46,7 @@ def make_snap(alpha=0.5, theta=-0.3, beta=-0.3, hi_beta=-0.5, quality=85.0, arti
             "Beta":    make_band(beta),
             "Hi-Beta": make_band(hi_beta),
         },
-        params={"metric_mode": "baseline_delta"},
+        params={"metric_mode": "log_absolute"},
     )
 
 

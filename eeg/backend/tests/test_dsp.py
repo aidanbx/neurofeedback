@@ -17,7 +17,7 @@ def test_alpha_sine_dominant():
     alpha_hz = 10.0
     buf = make_sine_buffer(alpha_hz, duration_sec=4.0)
     channels = [buf] + [np.zeros_like(buf)] * 7
-    result = compute_frame_metrics(buf, channels, 0, False, 4500000.0)
+    result = compute_frame_metrics(buf, channels, 0, False, False, 4500000.0)
     assert result is not None
 
     freqs, psd = compute_psd(buf[-500:])
@@ -40,7 +40,7 @@ def test_theta_sine_dominant():
 def test_compute_frame_metrics_returns_processed_frame():
     buf = make_sine_buffer(10.0, duration_sec=4.0)
     channels = [buf] + [np.zeros_like(buf)] * 7
-    result = compute_frame_metrics(buf, channels, 0, True, 4500000.0)
+    result = compute_frame_metrics(buf, channels, 0, True, False, 4500000.0)
     assert result is not None
     assert len(result.psd_freqs) > 0
     assert result.quality_score >= 0
@@ -50,8 +50,22 @@ def test_compute_frame_metrics_returns_processed_frame():
 
 def test_short_buffer_returns_none():
     buf = np.zeros(50)
-    result = compute_frame_metrics(buf, [buf] * 8, 0, False, 4500000.0)
+    result = compute_frame_metrics(buf, [buf] * 8, 0, False, False, 4500000.0)
     assert result is None
+
+
+def test_notch_toggle_changes_line_noise_metric():
+    eeg = make_sine_buffer(10.0, duration_sec=4.0, amplitude=30.0)
+    line = make_sine_buffer(60.0, duration_sec=4.0, amplitude=80.0)
+    buf = eeg + line
+    channels = [buf] + [np.zeros_like(buf)] * 7
+    raw = compute_frame_metrics(buf, channels, 0, False, False, 4500000.0)
+    notched = compute_frame_metrics(buf, channels, 0, False, True, 4500000.0)
+    assert raw is not None and notched is not None
+    assert raw.line_noise_ratio > 0.1
+    assert abs(raw.line_noise_ratio - notched.line_noise_ratio) < raw.line_noise_ratio * 0.1
+    assert notched.line_noise_ratio > 0.1
+    assert max(notched.raw_psd_values) > max(notched.psd_values)
 
 
 if __name__ == "__main__":
@@ -59,4 +73,5 @@ if __name__ == "__main__":
     test_theta_sine_dominant()
     test_compute_frame_metrics_returns_processed_frame()
     test_short_buffer_returns_none()
+    test_notch_toggle_changes_line_noise_metric()
     print("All DSP tests passed")

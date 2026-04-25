@@ -1,5 +1,7 @@
 export interface BandFeature {
   absolute: number;
+  relative_1_30: number;
+  relative_4_30: number;
   log_absolute: number;
   baseline_delta: number;
   baseline_zscore: number;
@@ -14,8 +16,13 @@ export interface MetricsSnapshot {
   quality_score: number;
   quality_label: 'good' | 'fair' | 'poor';
   artifact_fraction: number;
+  common_mode_corr: number;
+  slow_wave_ratio: number;
+  line_noise_ratio: number;
   psd_freqs: number[];
   psd_values: number[];
+  raw_psd_freqs: number[];
+  raw_psd_values: number[];
   live_trace_t: number[];
   live_trace_y: number[];
   bands: Record<string, BandFeature>;
@@ -80,7 +87,7 @@ export interface SessionMeta {
 
 export interface StreamMessage {
   type: 'metrics';
-  data: MetricsSnapshot;
+  data: MetricsSnapshot[];
   program_output: ProgramOutput | null;
 }
 
@@ -90,6 +97,7 @@ export interface AppState {
   test_mode: boolean;
   recording: boolean;
   artifact_rejection: boolean;
+  notch_60hz: boolean;
   duration_sec: number;
   metrics: MetricsSnapshot | null;
   active_program: string | null;
