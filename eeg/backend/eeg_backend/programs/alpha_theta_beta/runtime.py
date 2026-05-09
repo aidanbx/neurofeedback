@@ -6,7 +6,7 @@ from dataclasses import asdict, dataclass
 import numpy as np
 
 from ...contracts import MetricsSnapshot, ProgramOutput
-from ..templates import RewardInhibitRuntime, _quantile
+from ..templates import RewardInhibitRuntime
 
 DEFAULT_REWARD_PCT  = 65.0
 
@@ -57,31 +57,17 @@ class AlphaThetaBetaRuntime(RewardInhibitRuntime):
             "Beta":  beta_val,
         })
 
-        enough = self._enough_samples()
-        counts = {k: len(v) for k, v in self._calibration.items()}
-
-        if not enough:
-            alpha_vals = [v for _, v in self._calibration["Alpha"]]
-            theta_vals = [v for _, v in self._calibration["Theta"]]
-            beta_vals = [v for _, v in self._calibration["Beta"]]
-            a_thr = self._threshold_from_target("Alpha", self._alpha_reward_pct) if alpha_vals else alpha_val
-            t_thr = self._threshold_from_target("Theta", self._theta_reward_pct) if theta_vals else theta_val
-            b_thr = self._threshold_from_target("Beta", self._beta_reward_pct) if beta_vals else beta_val
-            alpha_clarity = self._clarity_from_range(alpha_val, a_thr, min(alpha_vals) if alpha_vals else alpha_val - 0.25, max(alpha_vals) if alpha_vals else alpha_val + 0.25)
-            theta_clarity = self._clarity_from_range(theta_val, t_thr, min(theta_vals) if theta_vals else theta_val - 0.25, max(theta_vals) if theta_vals else theta_val + 0.25)
-            beta_clarity  = self._clarity_from_range(beta_val,  b_thr, min(beta_vals) if beta_vals else beta_val - 0.25, max(beta_vals) if beta_vals else beta_val + 0.25)
-            mode = "warm_start"
-        else:
-            alpha_vals = [v for _, v in self._calibration["Alpha"]]
-            theta_vals = [v for _, v in self._calibration["Theta"]]
-            beta_vals  = [v for _, v in self._calibration["Beta"]]
-            a_thr = self._threshold_from_target("Alpha", self._alpha_reward_pct)
-            t_thr = self._threshold_from_target("Theta", self._theta_reward_pct)
-            b_thr = self._threshold_from_target("Beta",  self._beta_reward_pct)
-            alpha_clarity = self._clarity_from_range(alpha_val, a_thr, _quantile(alpha_vals, 0.1), _quantile(alpha_vals, 0.9))
-            theta_clarity = self._clarity_from_range(theta_val, t_thr, _quantile(theta_vals, 0.1), _quantile(theta_vals, 0.9))
-            beta_clarity  = self._clarity_from_range(beta_val,  b_thr, _quantile(beta_vals,  0.1), _quantile(beta_vals,  0.9))
-            mode = "rolling"
+        counts = {k: len(v) for k, v in self._history.items()}
+        a_thr = self._threshold_from_target("Alpha", self._alpha_reward_pct, elapsed=elapsed, fallback=alpha_val)
+        t_thr = self._threshold_from_target("Theta", self._theta_reward_pct, elapsed=elapsed, fallback=theta_val)
+        b_thr = self._threshold_from_target("Beta", self._beta_reward_pct, elapsed=elapsed, fallback=beta_val)
+        alpha_low, alpha_high = self._range_for_band("Alpha", alpha_val, elapsed=elapsed)
+        theta_low, theta_high = self._range_for_band("Theta", theta_val, elapsed=elapsed)
+        beta_low, beta_high = self._range_for_band("Beta", beta_val, elapsed=elapsed)
+        alpha_clarity = self._clarity_from_range(alpha_val, a_thr, alpha_low, alpha_high)
+        theta_clarity = self._clarity_from_range(theta_val, t_thr, theta_low, theta_high)
+        beta_clarity = self._clarity_from_range(beta_val, b_thr, beta_low, beta_high)
+        mode = self._mode_for_elapsed(elapsed)
 
         payload = AlphaThetaBetaPayload(
             mode=mode,
@@ -117,11 +103,11 @@ class AlphaThetaBetaRuntime(RewardInhibitRuntime):
     def set_params(self, params: dict) -> None:
         super().set_params(params)
         if "alpha_reward_pct" in params:
-            self._alpha_reward_pct = float(np.clip(params["alpha_reward_pct"], 1.0, 99.0))
+            self._alpha_reward_pct = float(np.clip(params["alpha_reward_pct"], 0.0, 100.0))
         if "theta_reward_pct" in params:
-            self._theta_reward_pct = float(np.clip(params["theta_reward_pct"], 1.0, 99.0))
+            self._theta_reward_pct = float(np.clip(params["theta_reward_pct"], 0.0, 100.0))
         if "beta_reward_pct" in params:
-            self._beta_reward_pct  = float(np.clip(params["beta_reward_pct"],  1.0, 99.0))
+            self._beta_reward_pct  = float(np.clip(params["beta_reward_pct"],  0.0, 100.0))
 
     def get_params(self) -> dict:
         return {

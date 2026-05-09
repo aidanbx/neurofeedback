@@ -1,9 +1,7 @@
-"""Shared template for reward/inhibit programs with rolling calibration."""
+"""Shared template for reward/inhibit programs with rolling thresholds."""
 from __future__ import annotations
 
 import math
-from collections import deque
-from typing import Any
 
 import numpy as np
 
@@ -29,27 +27,30 @@ def _quantile(values: list[float], p: float) -> float:
 
 
 class RewardInhibitRuntime(ProgramRuntime):
-    """Rolling calibration + percentile threshold + clarity mapping.
+    """Rolling thresholds + clarity mapping.
 
     Subclasses configure band names and target percentages; this class handles
-    the calibration deque, threshold computation, and clarity mapping.
+    the rolling window, threshold computation, and clarity mapping.
     """
 
-    _DEFAULT_CALIBRATION_WINDOW_SEC = 180.0
+    _DEFAULT_THRESHOLD_WINDOW_SEC   = 180.0
     _DEFAULT_CLARITY_AT_THRESHOLD   = 0.5
-    _MIN_CALIBRATION_SAMPLES_CAP    = 30
+    _BOOTSTRAP_THRESHOLD_SEC        = 5.0
 
     def __init__(self) -> None:
-        self._calibration_window_sec = self._DEFAULT_CALIBRATION_WINDOW_SEC
+        self._threshold_window_sec   = self._DEFAULT_THRESHOLD_WINDOW_SEC
         self._clarity_at_threshold   = self._DEFAULT_CLARITY_AT_THRESHOLD
-        # {band_name: deque of (elapsed, value)}
-        self._calibration: dict[str, list[tuple[float, float]]] = {}
+        self._history: dict[str, list[tuple[float, float]]] = {}
 
     def _init_calibration(self, band_names: list[str]) -> None:
-        self._calibration = {name: [] for name in band_names}
+        self._history = {name: [] for name in band_names}
 
-    def _min_calibration_samples(self) -> int:
-        return max(20, round(min(self._calibration_window_sec, 30) / 0.5))
+    def _window_values(self, band: str) -> list[float]:
+        return [v for _, v in self._history.get(band, [])]
+
+    def _bootstrap_values(self, band: str) -> list[float]:
+        bootstrap_sec = min(self._BOOTSTRAP_THRESHOLD_SEC, self._threshold_window_sec)
+        return [v for t, v in self._history.get(band, []) if t <= bootstrap_sec]
 
     def _ingest_sample(
         self,
@@ -57,33 +58,48 @@ class RewardInhibitRuntime(ProgramRuntime):
         elapsed: float,
         band_values: dict[str, float],
     ) -> None:
-        """Add one calibration sample if quality gates pass."""
+        """Add one rolling-threshold sample if quality gates pass."""
         if snap.quality_score < QUALITY_GATE or snap.artifact_fraction >= ARTIFACT_GATE:
             return
-        # Require all bands to have ready baselines
-        for name in self._calibration:
-            feat = snap.bands.get(name)
-            if feat is None or not feat.baseline_ready:
-                return
         for name, val in band_values.items():
-            if name in self._calibration:
-                self._calibration[name].append((elapsed, val))
-        self._prune_calibration(elapsed)
+            if name in self._history:
+                self._history[name].append((elapsed, val))
+        self._prune_history(elapsed)
 
-    def _prune_calibration(self, elapsed: float) -> None:
-        for lst in self._calibration.values():
-            while len(lst) > 1 and lst[0][0] < elapsed - self._calibration_window_sec:
+    def _prune_history(self, elapsed: float) -> None:
+        for lst in self._history.values():
+            while len(lst) > 1 and lst[0][0] < elapsed - self._threshold_window_sec:
                 lst.pop(0)
 
-    def _enough_samples(self) -> bool:
-        min_n = self._min_calibration_samples()
-        return all(len(lst) >= min_n for lst in self._calibration.values())
+    def _fixed_threshold(self, band: str, fallback: float) -> float:
+        vals = self._bootstrap_values(band)
+        if vals:
+            return float(np.mean(vals))
+        vals = self._window_values(band)
+        if vals:
+            return float(np.mean(vals))
+        return fallback
 
-    def _threshold_from_target(self, band: str, target_pct: float) -> float:
-        vals = [v for _, v in self._calibration.get(band, [])]
+    def _threshold_from_target(self, band: str, target_pct: float, *, elapsed: float, fallback: float) -> float:
+        vals = self._window_values(band)
         if not vals:
-            return 0.0
+            return fallback
+        if elapsed < self._threshold_window_sec:
+            return self._fixed_threshold(band, fallback)
         return _quantile(vals, 1.0 - target_pct / 100.0)
+
+    def _range_for_band(self, band: str, fallback: float, *, elapsed: float) -> tuple[float, float]:
+        vals = self._window_values(band) if elapsed >= self._threshold_window_sec else self._bootstrap_values(band)
+        if not vals:
+            return (fallback - 0.25, fallback + 0.25)
+        low = min(vals) if elapsed < self._threshold_window_sec else _quantile(vals, 0.1)
+        high = max(vals) if elapsed < self._threshold_window_sec else _quantile(vals, 0.9)
+        if math.isclose(low, high):
+            return (low - 0.1, high + 0.1)
+        return (low, high)
+
+    def _mode_for_elapsed(self, elapsed: float) -> str:
+        return "rolling" if elapsed >= self._threshold_window_sec else "starting"
 
     def _clarity_from_range(self, value: float, threshold: float, low: float, high: float) -> float:
         tc = max(0.05, min(0.95, self._clarity_at_threshold))
@@ -107,17 +123,19 @@ class RewardInhibitRuntime(ProgramRuntime):
         return math.log(max(absolute, 1e-12))
 
     def reset(self) -> None:
-        for lst in self._calibration.values():
+        for lst in self._history.values():
             lst.clear()
 
     def set_params(self, params: dict) -> None:
-        if "calibration_window_sec" in params:
-            self._calibration_window_sec = max(10.0, float(params["calibration_window_sec"]))
+        if "threshold_window_sec" in params:
+            self._threshold_window_sec = float(np.clip(params["threshold_window_sec"], 1.0, 300.0))
+        elif "calibration_window_sec" in params:
+            self._threshold_window_sec = float(np.clip(params["calibration_window_sec"], 1.0, 300.0))
         if "clarity_at_threshold" in params:
             self._clarity_at_threshold = float(np.clip(params["clarity_at_threshold"], 0.05, 0.95))
 
     def get_params(self) -> dict:
         return {
-            "calibration_window_sec": self._calibration_window_sec,
+            "threshold_window_sec": self._threshold_window_sec,
             "clarity_at_threshold":   self._clarity_at_threshold,
         }

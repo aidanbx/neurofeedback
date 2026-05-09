@@ -33,11 +33,20 @@ interface StateRegion<T extends Point> {
   active: (point: T) => boolean;
 }
 
+interface ThresholdHandle<T extends Point> {
+  key: string;
+  label: string;
+  color: string;
+  value: (point: T) => number;
+  onChange: (value: number) => void;
+}
+
 interface Props<T extends Point> {
   points: T[];
   bands: BandSeries<T>[];
   overlays?: OverlaySeries<T>[];
   states?: StateRegion<T>[];
+  thresholdHandles?: ThresholdHandle<T>[];
   height?: number;
   width?: number;
   windowSec?: number;
@@ -60,6 +69,7 @@ export function FeedbackTimelineChart<T extends Point>({
   bands,
   overlays = [],
   states = [],
+  thresholdHandles = [],
   height = 260,
   width = 800,
   windowSec = 120,
@@ -67,6 +77,14 @@ export function FeedbackTimelineChart<T extends Point>({
   showLegend = true,
 }: Props<T>) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const interactionRef = useRef<{
+    xScale: (value: number) => number;
+    valueFromY: (y: number) => number;
+    padTop: number;
+    plotH: number;
+    handleZones: Array<{ key: string; x: number; y: number; radius: number }>;
+  } | null>(null);
+  const dragHandleKeyRef = useRef<string | null>(null);
   const size = useCanvasSize(width, height);
   const chartWidth = size.width;
 
@@ -92,7 +110,36 @@ export function FeedbackTimelineChart<T extends Point>({
     ctx.fillStyle = '#05060a';
     ctx.fillRect(0, 0, chartWidth, height);
 
-    const PAD = { top: 34, right: 16, bottom: 24, left: 46 };
+    ctx.font = '10px ui-monospace, monospace';
+    const legend = showLegend ? [
+      ...bands.map((band) => ({ label: band.label, color: band.color })),
+      ...overlays.map((overlay) => ({ label: overlay.label, color: overlay.color })),
+      ...states.map((state) => ({ label: state.label, color: state.color })),
+    ] : [];
+    const legendStartX = 50;
+    const legendTop = 10;
+    const legendRowHeight = 14;
+    const legendMaxX = chartWidth - 16;
+    let legendRows = 0;
+    if (legend.length > 0) {
+      let cursorX = legendStartX;
+      legendRows = 1;
+      legend.forEach((item) => {
+        const itemWidth = 16 + ctx.measureText(item.label).width + 18;
+        if (cursorX > legendStartX && cursorX + itemWidth > legendMaxX) {
+          legendRows += 1;
+          cursorX = legendStartX;
+        }
+        cursorX += itemWidth;
+      });
+    }
+
+    const PAD = {
+      top: legendRows > 0 ? 12 + legendRows * legendRowHeight + 8 : 34,
+      right: 16,
+      bottom: 24,
+      left: 46,
+    };
     const plotW = Math.max(1, chartWidth - PAD.left - PAD.right);
     const plotH = Math.max(1, height - PAD.top - PAD.bottom);
 
@@ -112,6 +159,15 @@ export function FeedbackTimelineChart<T extends Point>({
     const xScale = (x: number) => PAD.left + ((x - xMin) / Math.max(1e-6, xMax - xMin)) * plotW;
     const bandY = (value: number) => PAD.top + plotH - ((value - yMin) / Math.max(1e-6, yMax - yMin)) * plotH;
     const unitY = (value: number) => PAD.top + plotH - Math.max(0, Math.min(1, value)) * plotH;
+    const valueFromY = (y: number) => yMax - ((y - PAD.top) / Math.max(1e-6, plotH)) * (yMax - yMin);
+
+    interactionRef.current = {
+      xScale,
+      valueFromY,
+      padTop: PAD.top,
+      plotH,
+      handleZones: [],
+    };
 
     ctx.strokeStyle = 'rgba(255,255,255,0.07)';
     ctx.lineWidth = 1;
@@ -206,24 +262,91 @@ export function FeedbackTimelineChart<T extends Point>({
       ctx.fillText(fmtTime(tick), xScale(tick), height - 8);
     }
 
-    if (showLegend) {
-      const legend = [
-        ...bands.map((band) => ({ label: band.label, color: band.color })),
-        ...overlays.map((overlay) => ({ label: overlay.label, color: overlay.color })),
-        ...states.map((state) => ({ label: state.label, color: state.color })),
-      ];
-      let cursor = PAD.left + 4;
+    if (legend.length > 0) {
+      let cursorX = legendStartX;
+      let row = 0;
       ctx.textAlign = 'left';
       ctx.font = '10px ui-monospace, monospace';
       legend.forEach((item) => {
+        const itemWidth = 16 + ctx.measureText(item.label).width + 18;
+        if (cursorX > legendStartX && cursorX + itemWidth > legendMaxX) {
+          row += 1;
+          cursorX = legendStartX;
+        }
+        const y = legendTop + row * legendRowHeight;
         ctx.fillStyle = item.color;
-        ctx.fillRect(cursor, 10, 12, 2);
+        ctx.fillRect(cursorX, y, 12, 2);
         ctx.fillStyle = item.color;
-        ctx.fillText(item.label, cursor + 16, 14);
-        cursor += ctx.measureText(item.label).width + 30;
+        ctx.fillText(item.label, cursorX + 16, y + 4);
+        cursorX += itemWidth;
       });
     }
-  }, [bands, chartWidth, height, overlays, showLegend, states, visible, windowSec]);
+
+    if (thresholdHandles.length > 0 && visible.length > 0) {
+      const latestPoint = visible[visible.length - 1];
+      interactionRef.current.handleZones = thresholdHandles.map((handle, index) => {
+        const y = bandY(handle.value(latestPoint));
+        const x = PAD.left + plotW + 8 + (index % 2) * 2;
+        ctx.fillStyle = '#05060a';
+        ctx.beginPath();
+        ctx.arc(x, y, 6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = handle.color;
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        ctx.arc(x, y, 4.5, 0, Math.PI * 2);
+        ctx.stroke();
+        return { key: handle.key, x, y, radius: 8 };
+      });
+    }
+  }, [bands, chartWidth, height, overlays, showLegend, states, thresholdHandles, visible, windowSec]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || thresholdHandles.length === 0) return;
+
+    const toLocal = (event: MouseEvent | PointerEvent) => {
+      const rect = canvas.getBoundingClientRect();
+      return { x: event.clientX - rect.left, y: event.clientY - rect.top };
+    };
+
+    const onPointerDown = (event: PointerEvent) => {
+      const interaction = interactionRef.current;
+      if (!interaction) return;
+      const { x, y } = toLocal(event);
+      const hit = interaction.handleZones.find((zone) => Math.hypot(zone.x - x, zone.y - y) <= zone.radius);
+      if (!hit) return;
+      dragHandleKeyRef.current = hit.key;
+      event.preventDefault();
+    };
+
+    const onPointerMove = (event: PointerEvent) => {
+      const activeKey = dragHandleKeyRef.current;
+      const interaction = interactionRef.current;
+      if (!activeKey || !interaction) return;
+      const handle = thresholdHandles.find((item) => item.key === activeKey);
+      if (!handle) return;
+      const { y } = toLocal(event);
+      const clampedY = Math.max(interaction.padTop, Math.min(interaction.padTop + interaction.plotH, y));
+      handle.onChange(interaction.valueFromY(clampedY));
+      event.preventDefault();
+    };
+
+    const stopDrag = () => {
+      dragHandleKeyRef.current = null;
+    };
+
+    canvas.addEventListener('pointerdown', onPointerDown);
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', stopDrag);
+    window.addEventListener('pointercancel', stopDrag);
+    return () => {
+      canvas.removeEventListener('pointerdown', onPointerDown);
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', stopDrag);
+      window.removeEventListener('pointercancel', stopDrag);
+    };
+  }, [thresholdHandles]);
 
   return (
     <div ref={size.wrapRef} style={{ width: '100%', height }}>

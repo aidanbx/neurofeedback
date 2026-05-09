@@ -1,5 +1,7 @@
 ## Commands to Run
 ```bash
+# Shared port config lives in eeg/config/ports.json
+
 # Production-ish Electron app
 npm run build
 node_modules/.bin/electron .
@@ -7,7 +9,7 @@ node_modules/.bin/electron .
 npm run dev
 # Backend only
 cd backend
-conda run -n eeg uvicorn eeg_backend.api.main:app --host 127.0.0.1 --port 8765 --reload
+conda run -n eeg uvicorn eeg_backend.api.main:app --host 127.0.0.1 --port 8766 --reload
 # Frontend only
 cd frontend
 npm run dev
@@ -26,7 +28,7 @@ conda run -n eeg python tests/test_metrics.py
 ```bash
 # terminal 1
 cd eeg/backend
-conda run -n eeg uvicorn eeg_backend.api.main:app --host 127.0.0.1 --port 8765 --reload
+conda run -n eeg uvicorn eeg_backend.api.main:app --host 127.0.0.1 --port 8766 --reload
 
 # terminal 2
 cd eeg/frontend

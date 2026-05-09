@@ -129,7 +129,7 @@ class SessionApp:
             data={"program": enriched_program},
         )
 
-    def stop_training(self) -> Path | None:
+    def stop_training(self, *, save: bool = False, notes: str | None = None) -> Path | None:
         with self.lock:
             active_program = self.active_program_id
         elapsed = self.recorder.session_duration_sec()
@@ -141,7 +141,16 @@ class SessionApp:
         )
         with self.lock:
             self.active_program_id = None
-        return self.recorder.stop_recording()
+        return self.recorder.stop_recording(save=save, notes=notes)
+
+    def save_stopped_training(self, notes: str | None = None) -> Path | None:
+        return self.recorder.save_stopped_recording(notes=notes)
+
+    def discard_stopped_training(self) -> bool:
+        with self.lock:
+            self.active_program_id = None
+            self.latest_program_output = None
+        return self.recorder.discard_stopped_recording()
 
     def _on_frame(self, frame) -> None:
         with self.lock:
@@ -225,7 +234,7 @@ class SessionApp:
             log_absolute=math.log(max(delta_abs, 1e-12)),
             baseline_delta=0.0,
             baseline_zscore=0.0,
-            smoothed=0.0,
+            smoothed=math.log(max(delta_abs, 1e-12)),
             baseline_ready=False,
             baseline_n=0,
             baseline_n_needed=0,

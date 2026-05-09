@@ -6,7 +6,7 @@ from dataclasses import asdict, dataclass
 import numpy as np
 
 from ...contracts import MetricsSnapshot, ProgramOutput
-from ..templates import RewardInhibitRuntime, _quantile
+from ..templates import RewardInhibitRuntime
 
 DEFAULT_REWARD_PCT     = 65.0
 DEFAULT_THETA_INHIB    = 15.0
@@ -22,6 +22,7 @@ class AlphaFeedbackPayload:
     inhibit_active: bool
     theta_inhibit:  bool
     beta_inhibit:   bool
+    alpha_low:      bool
     alpha_value:    float
     theta_value:    float
     beta_value:     float
@@ -67,41 +68,18 @@ class AlphaFeedbackRuntime(RewardInhibitRuntime):
             "Beta":  combined_beta,
         })
 
-        enough = self._enough_samples()
-        counts = {k: len(v) for k, v in self._calibration.items()}
-
-        if not enough:
-            alpha_vals = [v for _, v in self._calibration["Alpha"]]
-            theta_vals = [v for _, v in self._calibration["Theta"]]
-            beta_vals  = [v for _, v in self._calibration["Beta"]]
-            alpha_threshold = self._threshold_from_target("Alpha", self._reward_target_pct) if alpha_vals else alpha_val
-            theta_threshold = self._threshold_from_target("Theta", self._theta_inhibit_pct) if theta_vals else theta_val
-            beta_threshold  = self._threshold_from_target("Beta",  self._beta_inhibit_pct) if beta_vals else combined_beta
-            theta_inhibit   = theta_val >= theta_threshold
-            beta_inhibit    = combined_beta  >= beta_threshold
-            inhibit_active  = theta_inhibit or beta_inhibit
-            alpha_low = min(alpha_vals) if alpha_vals else alpha_val - 0.25
-            alpha_high = max(alpha_vals) if alpha_vals else alpha_val + 0.25
-            clarity = 0.0 if inhibit_active else self._clarity_from_range(alpha_val, alpha_threshold, alpha_low, alpha_high)
-            reward_active = not inhibit_active and alpha_val >= alpha_threshold
-            mode = "warm_start"
-        else:
-            alpha_vals = [v for _, v in self._calibration["Alpha"]]
-            theta_vals = [v for _, v in self._calibration["Theta"]]
-            beta_vals  = [v for _, v in self._calibration["Beta"]]
-            alpha_threshold = self._threshold_from_target("Alpha", self._reward_target_pct)
-            theta_threshold = self._threshold_from_target("Theta", self._theta_inhibit_pct)
-            beta_threshold  = self._threshold_from_target("Beta",  self._beta_inhibit_pct)
-            theta_inhibit   = theta_val >= theta_threshold
-            beta_inhibit    = combined_beta >= beta_threshold
-            inhibit_active  = theta_inhibit or beta_inhibit
-            alpha_low  = _quantile(alpha_vals, 0.1)
-            alpha_high = _quantile(alpha_vals, 0.9)
-            clarity = 0.0 if inhibit_active else self._clarity_from_range(
-                alpha_val, alpha_threshold, alpha_low, alpha_high
-            )
-            reward_active = not inhibit_active and alpha_val >= alpha_threshold
-            mode = "rolling"
+        counts = {k: len(v) for k, v in self._history.items()}
+        alpha_threshold = self._threshold_from_target("Alpha", self._reward_target_pct, elapsed=elapsed, fallback=alpha_val)
+        theta_threshold = self._threshold_from_target("Theta", self._theta_inhibit_pct, elapsed=elapsed, fallback=theta_val)
+        beta_threshold = self._threshold_from_target("Beta", self._beta_inhibit_pct, elapsed=elapsed, fallback=combined_beta)
+        theta_inhibit = theta_val >= theta_threshold
+        beta_inhibit = combined_beta >= beta_threshold
+        inhibit_active = theta_inhibit or beta_inhibit
+        alpha_low_bound, alpha_high = self._range_for_band("Alpha", alpha_val, elapsed=elapsed)
+        alpha_low = alpha_val <= alpha_low_bound
+        clarity = 0.0 if inhibit_active else self._clarity_from_range(alpha_val, alpha_threshold, alpha_low_bound, alpha_high)
+        reward_active = not inhibit_active and alpha_val >= alpha_threshold
+        mode = self._mode_for_elapsed(elapsed)
 
         payload = AlphaFeedbackPayload(
             mode=mode,
@@ -115,6 +93,7 @@ class AlphaFeedbackRuntime(RewardInhibitRuntime):
             inhibit_active=inhibit_active,
             theta_inhibit=theta_inhibit,
             beta_inhibit=beta_inhibit,
+            alpha_low=alpha_low,
             alpha_value=round(alpha_val,   4),
             theta_value=round(theta_val,   4),
             beta_value= round(combined_beta, 4),
@@ -141,11 +120,11 @@ class AlphaFeedbackRuntime(RewardInhibitRuntime):
     def set_params(self, params: dict) -> None:
         super().set_params(params)
         if "reward_target_pct" in params:
-            self._reward_target_pct = float(np.clip(params["reward_target_pct"], 1.0, 99.0))
+            self._reward_target_pct = float(np.clip(params["reward_target_pct"], 0.0, 100.0))
         if "theta_inhibit_pct" in params:
-            self._theta_inhibit_pct = float(np.clip(params["theta_inhibit_pct"], 1.0, 99.0))
+            self._theta_inhibit_pct = float(np.clip(params["theta_inhibit_pct"], 0.0, 100.0))
         if "beta_inhibit_pct" in params:
-            self._beta_inhibit_pct  = float(np.clip(params["beta_inhibit_pct"],  1.0, 99.0))
+            self._beta_inhibit_pct  = float(np.clip(params["beta_inhibit_pct"],  0.0, 100.0))
 
     def get_params(self) -> dict:
         return {

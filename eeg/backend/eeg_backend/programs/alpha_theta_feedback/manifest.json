@@ -1,0 +1,66 @@
+{
+  "id": "alpha_theta_feedback",
+  "title": "Alpha Theta Feedback",
+  "description": "Dual-track alpha and theta rewards with beta-above and slow-wave inhibits.",
+  "version": "1.0",
+  "runtime": "runtime:AlphaThetaFeedbackRuntime",
+  "frontend_view": "alpha_theta_feedback/view",
+  "required_bands": ["Delta", "Theta", "Alpha", "Beta", "Hi-Beta"],
+  "audio_scenes": ["main"],
+  "settings_schema": {
+    "threshold_window_sec": {
+      "type": "number",
+      "default": 60,
+      "min": 30,
+      "max": 180,
+      "step": 5,
+      "label": "Adaptive window",
+      "description": "Rolling baseline window used to recompute adaptive thresholds."
+    },
+    "clarity_at_threshold": {
+      "type": "number",
+      "default": 0.5,
+      "min": 0.05,
+      "max": 0.95,
+      "step": 0.05,
+      "label": "Threshold clarity",
+      "description": "Clarity value at each reward threshold."
+    },
+    "alpha_reward_pct": {
+      "type": "number",
+      "default": 27.5,
+      "min": 0,
+      "max": 100,
+      "step": 0.5,
+      "label": "Alpha reward time",
+      "description": "Target percentage of time alpha stays above its reward threshold."
+    },
+    "theta_reward_pct": {
+      "type": "number",
+      "default": 27.5,
+      "min": 0,
+      "max": 100,
+      "step": 0.5,
+      "label": "Theta reward time",
+      "description": "Target percentage of time theta stays above its reward threshold."
+    },
+    "slow_inhibit_pct": {
+      "type": "number",
+      "default": 15,
+      "min": 0,
+      "max": 100,
+      "step": 0.5,
+      "label": "Slow inhibit time",
+      "description": "Target percentage of time delta sits above its inhibit threshold."
+    },
+    "beta_inhibit_pct": {
+      "type": "number",
+      "default": 15,
+      "min": 0,
+      "max": 100,
+      "step": 0.5,
+      "label": "Beta+ inhibit time",
+      "description": "Target percentage of time combined beta and hi-beta sits above its inhibit threshold."
+    }
+  }
+}

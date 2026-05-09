@@ -37,11 +37,12 @@ exports.startPython = startPython;
 exports.stopPython = stopPython;
 const child_process_1 = require("child_process");
 const path = __importStar(require("path"));
+const appConfig_1 = require("./appConfig");
 let proc = null;
 function startPython(projectRoot) {
     // __dirname when compiled is electron-dist/, so projectRoot = eeg/
     const backendDir = path.join(projectRoot, 'backend');
-    proc = (0, child_process_1.spawn)('conda', ['run', '-n', 'eeg', 'uvicorn', 'eeg_backend.api.main:app', '--host', '127.0.0.1', '--port', '8765'], {
+    proc = (0, child_process_1.spawn)('conda', ['run', '-n', 'eeg', 'uvicorn', 'eeg_backend.api.main:app', '--host', appConfig_1.APP_HOST, '--port', String(appConfig_1.BACKEND_PORT)], {
         cwd: backendDir,
         stdio: ['ignore', 'pipe', 'pipe'],
         env: { ...process.env },

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api/client';
+import { BACKEND_HTTP_ORIGIN } from '../config/appConfig';
 import type { SessionMeta } from '../contracts';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -121,7 +122,7 @@ interface DetailProps {
 }
 
 export function SessionDetail({ session, onBack }: DetailProps) {
-  const BASE = window.location.protocol === 'file:' ? 'http://127.0.0.1:8765' : '';
+  const BASE = window.location.protocol === 'file:' ? BACKEND_HTTP_ORIGIN : '';
   const [noteMode, setNoteMode] = useState<'view' | 'edit'>('view');
   const [noteText, setNoteText] = useState('');
   const [favorite, setFavorite] = useState(session.is_favorite);

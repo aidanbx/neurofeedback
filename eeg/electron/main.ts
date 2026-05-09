@@ -1,12 +1,12 @@
 import { app, BrowserWindow, shell } from 'electron';
 import * as http from 'http';
 import * as path from 'path';
+import { DEV_SERVER_URL } from './appConfig';
 import { startPython, stopPython } from './pythonProcess';
 
 const PROJECT_ROOT = path.join(__dirname, '..');
 const DEV_MODE = process.env.ELECTRON_DEV === '1';
 const DIST_INDEX = path.join(PROJECT_ROOT, 'dist', 'index.html');
-const DEV_SERVER_URL = 'http://127.0.0.1:3000';
 
 let win: BrowserWindow | null = null;
 

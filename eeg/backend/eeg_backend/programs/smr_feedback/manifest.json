@@ -1,0 +1,57 @@
+{
+  "id": "smr_feedback",
+  "title": "SMR Feedback",
+  "description": "Single-scene SMR reward with theta and hi-beta inhibits plus a sustained reward dwell window.",
+  "version": "1.0",
+  "runtime": "runtime:SMRFeedbackRuntime",
+  "frontend_view": "smr_feedback/view",
+  "required_bands": ["SMR", "Theta", "Hi-Beta"],
+  "audio_scenes": ["main"],
+  "settings_schema": {
+    "threshold_window_sec": {
+      "type": "number",
+      "default": 60,
+      "min": 30,
+      "max": 180,
+      "step": 5,
+      "label": "Adaptive window",
+      "description": "Rolling baseline window used to recompute adaptive thresholds."
+    },
+    "clarity_at_threshold": {
+      "type": "number",
+      "default": 0.5,
+      "min": 0.05,
+      "max": 0.95,
+      "step": 0.05,
+      "label": "Threshold clarity",
+      "description": "Clarity value at the SMR reward threshold."
+    },
+    "reward_target_pct": {
+      "type": "number",
+      "default": 27.5,
+      "min": 0,
+      "max": 100,
+      "step": 0.5,
+      "label": "SMR reward time",
+      "description": "Target percentage of time SMR stays above its reward threshold."
+    },
+    "theta_inhibit_pct": {
+      "type": "number",
+      "default": 15,
+      "min": 0,
+      "max": 100,
+      "step": 0.5,
+      "label": "Theta inhibit time",
+      "description": "Target percentage of time theta sits above its inhibit threshold."
+    },
+    "hibeta_inhibit_pct": {
+      "type": "number",
+      "default": 15,
+      "min": 0,
+      "max": 100,
+      "step": 0.5,
+      "label": "Hi-beta inhibit time",
+      "description": "Target percentage of time hi-beta sits above its inhibit threshold."
+    }
+  }
+}

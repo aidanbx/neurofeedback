@@ -8,14 +8,14 @@
   "required_bands": ["Alpha", "Theta", "Beta", "Hi-Beta"],
   "audio_scenes": ["main"],
   "settings_schema": {
-    "calibration_window_sec": {
+    "threshold_window_sec": {
       "type": "number",
       "default": 180,
-      "min": 10,
-      "max": 600,
-      "step": 5,
-      "label": "Calibration window",
-      "description": "Rolling calibration window in seconds."
+      "min": 1,
+      "max": 300,
+      "step": 1,
+      "label": "Threshold window",
+      "description": "How far into the past thresholds look. Lower reacts faster; higher adapts more slowly."
     },
     "clarity_at_threshold": {
       "type": "number",
@@ -29,8 +29,8 @@
     "reward_target_pct": {
       "type": "number",
       "default": 65,
-      "min": 40,
-      "max": 85,
+      "min": 0,
+      "max": 100,
       "step": 1,
       "label": "Reward rate",
       "description": "Target percentage of samples expected to reward."
@@ -38,8 +38,8 @@
     "theta_inhibit_pct": {
       "type": "number",
       "default": 15,
-      "min": 5,
-      "max": 35,
+      "min": 0,
+      "max": 100,
       "step": 1,
       "label": "Theta inhibit",
       "description": "Target percentage of theta samples expected to inhibit."
@@ -47,8 +47,8 @@
     "beta_inhibit_pct": {
       "type": "number",
       "default": 15,
-      "min": 5,
-      "max": 35,
+      "min": 0,
+      "max": 100,
       "step": 1,
       "label": "Beta inhibit",
       "description": "Target percentage of beta samples expected to inhibit."

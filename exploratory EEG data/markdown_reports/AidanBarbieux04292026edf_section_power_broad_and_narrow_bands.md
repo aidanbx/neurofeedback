@@ -1,0 +1,181 @@
+# EDF Section Power Summary by Broad and Narrow Bands
+
+- Source CSV: `exploratory EEG data/AidanBarbieux04292026edf_section_power.csv`
+- Units: `uV^2` summed across each named frequency band
+
+- Section: `EO_rest`
+  - Eyes: `eyes_open`
+  - Serial 7s: `no`
+  - Time window: `0.000` to `495.000` seconds
+  - Duration: `495.000` seconds
+  - Channel: `FP1-A1`
+    - Band powers: Delta=516.736667, Theta=31.301173, Alpha=10.190296, Beta=6.741800, High Beta=1.824948, Gamma=1.810456, High Gamma=0.525308, Alpha 1=8.508284, Alpha 2=4.830325, Beta 1=1.834314, Beta 2=1.852790, Beta 3=3.980701, Gamma 1=1.283052, Gamma 2=0.679770
+  - Channel: `FP2-A1`
+    - Band powers: Delta=453.310089, Theta=29.044104, Alpha=10.061399, Beta=6.511353, High Beta=1.786906, Gamma=1.659808, High Gamma=0.433848, Alpha 1=8.346888, Alpha 2=4.784197, Beta 1=1.909233, Beta 2=1.822400, Beta 3=3.705873, Gamma 1=1.206529, Gamma 2=0.589105
+  - Channel: `F3-A1`
+    - Band powers: Delta=108.963758, Theta=16.031737, Alpha=14.455869, Beta=9.171839, High Beta=1.882528, Gamma=1.649151, High Gamma=0.461479, Alpha 1=11.940343, Alpha 2=7.763560, Beta 1=2.567178, Beta 2=2.583024, Beta 3=5.305338, Gamma 1=1.178244, Gamma 2=0.611663
+  - Channel: `F4-A1`
+    - Band powers: Delta=86.885379, Theta=15.026338, Alpha=12.805753, Beta=8.557423, High Beta=1.774460, Gamma=1.560154, High Gamma=0.421562, Alpha 1=10.633394, Alpha 2=6.077222, Beta 1=2.397374, Beta 2=2.476459, Beta 3=4.932235, Gamma 1=1.137965, Gamma 2=0.537760
+  - Channel: `C3-A1`
+    - Band powers: Delta=41.543118, Theta=10.675960, Alpha=26.175422, Beta=8.097523, High Beta=1.958778, Gamma=1.810664, High Gamma=0.466888, Alpha 1=21.288087, Alpha 2=19.176823, Beta 1=2.124666, Beta 2=2.188361, Beta 3=4.879323, Gamma 1=1.361098, Gamma 2=0.586798
+  - Channel: `C4-A1`
+    - Band powers: Delta=41.563199, Theta=10.996774, Alpha=12.157656, Beta=7.628385, High Beta=1.803976, Gamma=1.597047, High Gamma=0.417625, Alpha 1=10.032449, Alpha 2=6.585200, Beta 1=2.040441, Beta 2=2.183674, Beta 3=4.501400, Gamma 1=1.153692, Gamma 2=0.555208
+  - Channel: `P3-A1`
+    - Band powers: Delta=30.779523, Theta=9.684766, Alpha=20.174116, Beta=7.701022, High Beta=1.868510, Gamma=1.632239, High Gamma=0.451957, Alpha 1=16.819016, Alpha 2=12.130287, Beta 1=2.477715, Beta 2=2.145072, Beta 3=4.148147, Gamma 1=1.182610, Gamma 2=0.582389
+  - Channel: `P4-A1`
+    - Band powers: Delta=30.945376, Theta=10.750427, Alpha=28.389971, Beta=8.655706, High Beta=2.023127, Gamma=1.823402, High Gamma=0.461580, Alpha 1=24.582130, Alpha 2=18.784927, Beta 1=2.507879, Beta 2=2.444515, Beta 3=4.913605, Gamma 1=1.364198, Gamma 2=0.593209
+  - Channel: `O1-A1`
+    - Band powers: Delta=31.194467, Theta=8.905795, Alpha=16.966494, Beta=7.853469, High Beta=2.001495, Gamma=1.816307, High Gamma=0.540286, Alpha 1=13.890496, Alpha 2=9.793837, Beta 1=2.732206, Beta 2=2.286805, Beta 3=3.991101, Gamma 1=1.280170, Gamma 2=0.688160
+  - Channel: `O2-A1`
+    - Band powers: Delta=27.924425, Theta=9.740102, Alpha=26.602686, Beta=8.856941, High Beta=2.121458, Gamma=1.999692, High Gamma=0.613760, Alpha 1=22.810113, Alpha 2=17.153064, Beta 1=2.784883, Beta 2=2.460526, Beta 3=4.826796, Gamma 1=1.398750, Gamma 2=0.766087
+  - Channel: `F7-A1`
+    - Band powers: Delta=123.103402, Theta=10.294487, Alpha=6.983485, Beta=6.567819, High Beta=2.303977, Gamma=2.711877, High Gamma=0.985850, Alpha 1=5.787618, Alpha 2=3.752391, Beta 1=1.449533, Beta 2=1.895808, Beta 3=4.132045, Gamma 1=1.880223, Gamma 2=1.106525
+  - Channel: `F8-A1`
+    - Band powers: Delta=105.119237, Theta=11.755701, Alpha=6.258043, Beta=5.807236, High Beta=1.721499, Gamma=1.492953, High Gamma=0.485838, Alpha 1=4.879311, Alpha 2=3.006243, Beta 1=1.657184, Beta 2=1.592743, Beta 3=3.372376, Gamma 1=1.058314, Gamma 2=0.572868
+  - Channel: `T3-A1`
+    - Band powers: Delta=33.325170, Theta=6.202251, Alpha=8.528036, Beta=9.196232, High Beta=3.407415, Gamma=4.586567, High Gamma=1.740303, Alpha 1=6.746640, Alpha 2=5.758853, Beta 1=2.045432, Beta 2=2.657290, Beta 3=5.823040, Gamma 1=2.994179, Gamma 2=2.015831
+  - Channel: `T4-A1`
+    - Band powers: Delta=23.969475, Theta=6.052634, Alpha=8.903365, Beta=7.265604, High Beta=2.282566, Gamma=2.814121, High Gamma=1.073947, Alpha 1=7.396946, Alpha 2=5.435750, Beta 1=1.546653, Beta 2=1.948610, Beta 3=4.752793, Gamma 1=1.820362, Gamma 2=1.248381
+  - Channel: `T5-A1`
+    - Band powers: Delta=21.728548, Theta=6.074948, Alpha=10.041886, Beta=6.046779, High Beta=2.155672, Gamma=1.877392, High Gamma=0.533563, Alpha 1=8.152682, Alpha 2=6.033588, Beta 1=1.752267, Beta 2=1.638229, Beta 3=3.479036, Gamma 1=1.365990, Gamma 2=0.654071
+  - Channel: `T6-A1`
+    - Band powers: Delta=22.637560, Theta=8.090998, Alpha=22.078079, Beta=7.192320, High Beta=2.088974, Gamma=1.994556, High Gamma=0.534154, Alpha 1=19.063775, Alpha 2=15.140768, Beta 1=1.916487, Beta 2=1.942723, Beta 3=4.304606, Gamma 1=1.463774, Gamma 2=0.673821
+  - Channel: `Fz-A1`
+    - Band powers: Delta=102.123069, Theta=16.219572, Alpha=14.785905, Beta=8.879716, High Beta=1.778444, Gamma=1.543069, High Gamma=0.405896, Alpha 1=12.360005, Alpha 2=7.295683, Beta 1=2.520273, Beta 2=2.485155, Beta 3=5.127628, Gamma 1=1.138568, Gamma 2=0.525108
+  - Channel: `Cz-A1`
+    - Band powers: Delta=45.232128, Theta=13.728610, Alpha=16.683877, Beta=9.382336, High Beta=2.318906, Gamma=2.113059, High Gamma=0.478965, Alpha 1=13.846615, Alpha 2=8.528734, Beta 1=2.536674, Beta 2=2.583266, Beta 3=5.562472, Gamma 1=1.621238, Gamma 2=0.643355
+  - Channel: `Pz-A1`
+    - Band powers: Delta=33.999135, Theta=11.372276, Alpha=22.742413, Beta=8.453708, High Beta=1.914121, Gamma=1.688153, High Gamma=0.449327, Alpha 1=19.511584, Alpha 2=12.591420, Beta 1=2.669787, Beta 2=2.461108, Beta 3=4.532041, Gamma 1=1.230622, Gamma 2=0.593226
+
+- Section: `EO_serial7s`
+  - Eyes: `eyes_open`
+  - Serial 7s: `yes`
+  - Time window: `495.000` to `600.000` seconds
+  - Duration: `105.000` seconds
+  - Channel: `FP1-A1`
+    - Band powers: Delta=177.119781, Theta=37.592615, Alpha=16.882040, Beta=10.463678, High Beta=2.839444, Gamma=3.109218, High Gamma=1.072844, Alpha 1=14.472452, Alpha 2=7.731146, Beta 1=2.680355, Beta 2=3.364240, Beta 3=6.089359, Gamma 1=2.248138, Gamma 2=1.153383
+  - Channel: `FP2-A1`
+    - Band powers: Delta=161.867101, Theta=33.878897, Alpha=17.271274, Beta=9.465916, High Beta=1.927332, Gamma=1.868488, High Gamma=0.699324, Alpha 1=14.806659, Alpha 2=8.135157, Beta 1=2.354015, Beta 2=2.827740, Beta 3=5.781602, Gamma 1=1.220895, Gamma 2=0.780464
+  - Channel: `F3-A1`
+    - Band powers: Delta=55.426758, Theta=20.195840, Alpha=22.874833, Beta=12.123945, High Beta=2.066824, Gamma=1.993785, High Gamma=0.592230, Alpha 1=19.471643, Alpha 2=10.527008, Beta 1=3.053065, Beta 2=3.709156, Beta 3=7.284912, Gamma 1=1.384629, Gamma 2=0.781784
+  - Channel: `F4-A1`
+    - Band powers: Delta=42.421898, Theta=20.296028, Alpha=22.423393, Beta=12.005534, High Beta=1.927237, Gamma=1.810621, High Gamma=0.489397, Alpha 1=19.588752, Alpha 2=9.504839, Beta 1=2.801063, Beta 2=3.748424, Beta 3=7.365695, Gamma 1=1.302919, Gamma 2=0.654487
+  - Channel: `C3-A1`
+    - Band powers: Delta=24.836735, Theta=14.319109, Alpha=40.998470, Beta=11.257512, High Beta=2.083508, Gamma=2.061724, High Gamma=0.487676, Alpha 1=31.907347, Alpha 2=26.008595, Beta 1=2.882320, Beta 2=3.253462, Beta 3=6.871942, Gamma 1=1.599756, Gamma 2=0.616815
+  - Channel: `C4-A1`
+    - Band powers: Delta=26.227658, Theta=15.562927, Alpha=22.538732, Beta=11.342617, High Beta=2.124714, Gamma=1.919648, High Gamma=0.449063, Alpha 1=19.485983, Alpha 2=11.178456, Beta 1=2.514888, Beta 2=3.275869, Beta 3=7.218050, Gamma 1=1.494798, Gamma 2=0.561447
+  - Channel: `P3-A1`
+    - Band powers: Delta=24.752791, Theta=13.671659, Alpha=38.073114, Beta=11.054079, High Beta=2.095033, Gamma=1.811709, High Gamma=0.492609, Alpha 1=31.323306, Alpha 2=21.308089, Beta 1=3.628839, Beta 2=3.293316, Beta 3=5.939173, Gamma 1=1.329966, Gamma 2=0.626317
+  - Channel: `P4-A1`
+    - Band powers: Delta=24.947883, Theta=15.537522, Alpha=54.350495, Beta=12.707151, High Beta=2.377364, Gamma=2.183499, High Gamma=0.484891, Alpha 1=44.933030, Alpha 2=36.054964, Beta 1=3.784326, Beta 2=3.753008, Beta 3=7.179113, Gamma 1=1.700793, Gamma 2=0.611319
+  - Channel: `O1-A1`
+    - Band powers: Delta=20.672976, Theta=10.872471, Alpha=40.812950, Beta=10.936589, High Beta=2.221204, Gamma=1.861756, High Gamma=0.546144, Alpha 1=34.479381, Alpha 2=24.925177, Beta 1=4.292477, Beta 2=3.122562, Beta 3=5.262090, Gamma 1=1.300740, Gamma 2=0.706374
+  - Channel: `O2-A1`
+    - Band powers: Delta=24.313051, Theta=13.528320, Alpha=58.241284, Beta=12.509426, High Beta=2.370934, Gamma=2.059574, High Gamma=0.553729, Alpha 1=47.449704, Alpha 2=41.805081, Beta 1=4.440507, Beta 2=3.547392, Beta 3=6.471419, Gamma 1=1.517705, Gamma 2=0.689804
+  - Channel: `F7-A1`
+    - Band powers: Delta=43.416531, Theta=12.043842, Alpha=11.072813, Beta=11.270195, High Beta=3.474838, Gamma=3.982068, High Gamma=1.504342, Alpha 1=9.253121, Alpha 2=5.330558, Beta 1=2.067664, Beta 2=3.052405, Beta 3=7.677549, Gamma 1=2.162234, Gamma 2=2.249284
+  - Channel: `F8-A1`
+    - Band powers: Delta=54.999362, Theta=14.243885, Alpha=10.641445, Beta=7.808938, High Beta=2.059613, Gamma=1.794339, High Gamma=0.576894, Alpha 1=9.074741, Alpha 2=5.081645, Beta 1=1.742365, Beta 2=2.171360, Beta 3=4.983898, Gamma 1=1.211897, Gamma 2=0.731324
+  - Channel: `T3-A1`
+    - Band powers: Delta=26.328552, Theta=7.454590, Alpha=15.090069, Beta=22.577682, High Beta=7.210365, Gamma=16.697727, High Gamma=4.599046, Alpha 1=11.548975, Alpha 2=9.282143, Beta 1=3.686547, Beta 2=9.835403, Beta 3=14.016321, Gamma 1=10.589187, Gamma 2=8.056802
+  - Channel: `T4-A1`
+    - Band powers: Delta=16.664576, Theta=7.820473, Alpha=16.479941, Beta=18.486211, High Beta=4.605781, Gamma=10.406829, High Gamma=3.795629, Alpha 1=13.616691, Alpha 2=10.326708, Beta 1=3.049723, Beta 2=6.013279, Beta 3=12.392131, Gamma 1=6.136849, Gamma 2=5.116434
+  - Channel: `T5-A1`
+    - Band powers: Delta=17.880232, Theta=7.058630, Alpha=21.038024, Beta=10.879443, High Beta=3.436064, Gamma=3.608284, High Gamma=0.987957, Alpha 1=16.746319, Alpha 2=12.646781, Beta 1=3.261904, Beta 2=3.038176, Beta 3=6.242645, Gamma 1=2.486364, Gamma 2=1.446954
+  - Channel: `T6-A1`
+    - Band powers: Delta=18.781220, Theta=10.517650, Alpha=41.887885, Beta=11.334230, High Beta=2.865453, Gamma=2.764307, High Gamma=0.654195, Alpha 1=33.646485, Alpha 2=30.311373, Beta 1=3.173833, Beta 2=3.152609, Beta 3=6.715522, Gamma 1=2.163238, Gamma 2=0.753336
+  - Channel: `Fz-A1`
+    - Band powers: Delta=46.482221, Theta=22.234665, Alpha=25.907313, Beta=12.493414, High Beta=1.869021, Gamma=1.610772, High Gamma=0.404588, Alpha 1=22.459384, Alpha 2=11.416149, Beta 1=3.223844, Beta 2=3.768868, Beta 3=7.476710, Gamma 1=1.222484, Gamma 2=0.507726
+  - Channel: `Cz-A1`
+    - Band powers: Delta=31.106781, Theta=20.013604, Alpha=31.487679, Beta=13.344706, High Beta=2.432961, Gamma=2.217706, High Gamma=0.501933, Alpha 1=27.890109, Alpha 2=13.131014, Beta 1=3.301451, Beta 2=3.887243, Beta 3=8.217333, Gamma 1=1.734618, Gamma 2=0.632137
+  - Channel: `Pz-A1`
+    - Band powers: Delta=27.851693, Theta=17.233080, Alpha=46.085328, Beta=11.642127, High Beta=2.077378, Gamma=1.798085, High Gamma=0.465275, Alpha 1=40.018076, Alpha 2=23.851470, Beta 1=3.706801, Beta 2=3.701609, Beta 3=6.226225, Gamma 1=1.339044, Gamma 2=0.583692
+
+- Section: `EC_rest`
+  - Eyes: `eyes_closed`
+  - Serial 7s: `no`
+  - Time window: `600.000` to `1020.000` seconds
+  - Duration: `420.000` seconds
+  - Channel: `FP1-A1`
+    - Band powers: Delta=48.075114, Theta=16.882879, Alpha=28.239998, Beta=12.350172, High Beta=4.218217, Gamma=3.656094, High Gamma=1.260248, Alpha 1=25.277771, Alpha 2=16.128540, Beta 1=3.438735, Beta 2=3.426167, Beta 3=7.280357, Gamma 1=2.249780, Gamma 2=1.713668
+  - Channel: `FP2-A1`
+    - Band powers: Delta=41.147977, Theta=17.377111, Alpha=27.742333, Beta=10.550748, High Beta=2.217348, Gamma=2.049111, High Gamma=0.561867, Alpha 1=25.201777, Alpha 2=15.850094, Beta 1=2.685924, Beta 2=3.567348, Beta 3=6.131564, Gamma 1=1.437778, Gamma 2=0.786940
+  - Channel: `F3-A1`
+    - Band powers: Delta=34.987095, Theta=22.545546, Alpha=37.390685, Beta=14.097032, High Beta=3.059202, Gamma=2.307597, High Gamma=0.613514, Alpha 1=33.607645, Alpha 2=20.733727, Beta 1=3.466602, Beta 2=4.590519, Beta 3=8.387265, Gamma 1=1.680015, Gamma 2=0.802439
+  - Channel: `F4-A1`
+    - Band powers: Delta=25.731361, Theta=23.016850, Alpha=37.667627, Beta=14.786402, High Beta=2.399360, Gamma=1.903383, High Gamma=0.487273, Alpha 1=34.373071, Alpha 2=20.550376, Beta 1=3.450389, Beta 2=5.117908, Beta 3=8.785031, Gamma 1=1.368687, Gamma 2=0.684065
+  - Channel: `C3-A1`
+    - Band powers: Delta=24.471673, Theta=19.837120, Alpha=54.006129, Beta=14.179170, High Beta=2.742952, Gamma=2.203132, High Gamma=0.511113, Alpha 1=47.720848, Alpha 2=33.701006, Beta 1=3.376333, Beta 2=4.534876, Beta 3=8.631779, Gamma 1=1.640085, Gamma 2=0.714535
+  - Channel: `C4-A1`
+    - Band powers: Delta=23.702705, Theta=20.693445, Alpha=39.036654, Beta=14.924332, High Beta=2.595088, Gamma=2.007391, High Gamma=0.488115, Alpha 1=35.553946, Alpha 2=22.483595, Beta 1=3.347390, Beta 2=4.947146, Beta 3=9.105315, Gamma 1=1.477855, Gamma 2=0.673563
+  - Channel: `P3-A1`
+    - Band powers: Delta=27.726385, Theta=22.620478, Alpha=106.456695, Beta=19.715536, High Beta=2.877316, Gamma=2.286309, High Gamma=0.551484, Alpha 1=92.162466, Alpha 2=72.770871, Beta 1=4.690355, Beta 2=6.124833, Beta 3=12.269484, Gamma 1=1.679651, Gamma 2=0.772004
+  - Channel: `P4-A1`
+    - Band powers: Delta=27.839124, Theta=22.495719, Alpha=102.580715, Beta=19.964536, High Beta=3.091377, Gamma=2.473829, High Gamma=0.557919, Alpha 1=91.491469, Alpha 2=71.942984, Beta 1=4.549363, Beta 2=6.236755, Beta 3=12.419989, Gamma 1=1.868448, Gamma 2=0.772129
+  - Channel: `O1-A1`
+    - Band powers: Delta=26.954867, Theta=19.927083, Alpha=160.348672, Beta=20.504215, High Beta=3.005746, Gamma=2.417205, High Gamma=0.622856, Alpha 1=134.872388, Alpha 2=129.349232, Beta 1=5.482541, Beta 2=6.419615, Beta 3=12.112724, Gamma 1=1.766657, Gamma 2=0.834939
+  - Channel: `O2-A1`
+    - Band powers: Delta=30.196074, Theta=22.326446, Alpha=159.856741, Beta=22.834732, High Beta=3.258970, Gamma=2.546076, High Gamma=0.654831, Alpha 1=137.684434, Alpha 2=127.676877, Beta 1=5.584482, Beta 2=7.115024, Beta 3=13.802798, Gamma 1=1.871230, Gamma 2=0.859784
+  - Channel: `F7-A1`
+    - Band powers: Delta=23.521459, Theta=11.196680, Alpha=19.309457, Beta=8.619571, High Beta=2.246997, Gamma=2.069626, High Gamma=0.606841, Alpha 1=17.146640, Alpha 2=10.946491, Beta 1=2.070786, Beta 2=2.808881, Beta 3=5.173103, Gamma 1=1.452236, Gamma 2=0.779194
+  - Channel: `F8-A1`
+    - Band powers: Delta=24.470181, Theta=13.115802, Alpha=18.500501, Beta=9.286360, High Beta=1.933178, Gamma=1.654993, High Gamma=0.470145, Alpha 1=16.647387, Alpha 2=10.459073, Beta 1=2.287474, Beta 2=3.067565, Beta 3=5.496644, Gamma 1=1.146061, Gamma 2=0.652037
+  - Channel: `T3-A1`
+    - Band powers: Delta=459406.819031, Theta=67688.284554, Alpha=21524.834908, Beta=21790.512146, High Beta=4115.610401, Gamma=3623.333037, High Gamma=712.778722, Alpha 1=14633.968835, Alpha 2=11138.542715, Beta 1=10033.859551, Beta 2=6502.965411, Beta 3=8634.652169, Gamma 1=2621.632427, Gamma 2=1275.309103
+  - Channel: `T4-A1`
+    - Band powers: Delta=16.892193, Theta=10.730051, Alpha=22.741895, Beta=11.820636, High Beta=3.391040, Gamma=3.859315, High Gamma=1.150274, Alpha 1=20.261235, Alpha 2=14.385907, Beta 1=3.029228, Beta 2=3.965073, Beta 3=6.803243, Gamma 1=2.740877, Gamma 2=1.434098
+  - Channel: `T5-A1`
+    - Band powers: Delta=21.743446, Theta=13.769737, Alpha=54.545698, Beta=14.440359, High Beta=2.803670, Gamma=2.276458, High Gamma=0.606358, Alpha 1=47.233738, Alpha 2=36.576005, Beta 1=3.293065, Beta 2=4.424412, Beta 3=9.130131, Gamma 1=1.635937, Gamma 2=0.817376
+  - Channel: `T6-A1`
+    - Band powers: Delta=22.081959, Theta=15.793910, Alpha=68.818396, Beta=16.335046, High Beta=2.844466, Gamma=2.375332, High Gamma=0.584428, Alpha 1=60.903373, Alpha 2=49.508044, Beta 1=3.616819, Beta 2=4.820910, Beta 3=10.363997, Gamma 1=1.764772, Gamma 2=0.780172
+  - Channel: `Fz-A1`
+    - Band powers: Delta=29.151722, Theta=24.976250, Alpha=42.413706, Beta=14.852056, High Beta=2.514959, Gamma=1.973591, High Gamma=0.489206, Alpha 1=38.719876, Alpha 2=23.063039, Beta 1=3.556504, Beta 2=4.965448, Beta 3=8.862479, Gamma 1=1.430860, Gamma 2=0.691690
+  - Channel: `Cz-A1`
+    - Band powers: Delta=31.171469, Theta=28.195431, Alpha=58.481817, Beta=17.989889, High Beta=3.721012, Gamma=2.844881, High Gamma=0.590273, Alpha 1=53.405261, Alpha 2=30.515473, Beta 1=4.177795, Beta 2=6.002141, Beta 3=10.915598, Gamma 1=2.203292, Gamma 2=0.822978
+  - Channel: `Pz-A1`
+    - Band powers: Delta=30.636451, Theta=27.086637, Alpha=109.427197, Beta=20.794547, High Beta=3.067502, Gamma=2.380633, High Gamma=0.557639, Alpha 1=97.470044, Alpha 2=69.554174, Beta 1=4.942210, Beta 2=6.906363, Beta 3=12.655391, Gamma 1=1.769487, Gamma 2=0.776169
+
+- Section: `EC_serial7s`
+  - Eyes: `eyes_closed`
+  - Serial 7s: `yes`
+  - Time window: `1020.000` to `1168.000` seconds
+  - Duration: `148.000` seconds
+  - Channel: `FP1-A1`
+    - Band powers: Delta=83.834775, Theta=17.422866, Alpha=20.501697, Beta=10.067497, High Beta=2.418108, Gamma=2.385824, High Gamma=0.694717, Alpha 1=16.911827, Alpha 2=12.293148, Beta 1=2.787275, Beta 2=3.086499, Beta 3=5.782941, Gamma 1=1.673126, Gamma 2=0.901925
+  - Channel: `FP2-A1`
+    - Band powers: Delta=70.730892, Theta=17.564352, Alpha=20.608589, Beta=9.234675, High Beta=1.949537, Gamma=1.758128, High Gamma=0.471600, Alpha 1=17.433753, Alpha 2=12.147954, Beta 1=2.563385, Beta 2=2.974531, Beta 3=5.296146, Gamma 1=1.262127, Gamma 2=0.621753
+  - Channel: `F3-A1`
+    - Band powers: Delta=49.993146, Theta=19.897799, Alpha=28.482936, Beta=12.455435, High Beta=2.744738, Gamma=2.066565, High Gamma=0.595568, Alpha 1=23.731737, Alpha 2=16.495341, Beta 1=3.337568, Beta 2=3.958909, Beta 3=7.184869, Gamma 1=1.475778, Gamma 2=0.734908
+  - Channel: `F4-A1`
+    - Band powers: Delta=36.628021, Theta=21.269878, Alpha=28.525808, Beta=13.332048, High Beta=2.406557, Gamma=1.815186, High Gamma=0.412627, Alpha 1=24.580756, Alpha 2=15.738680, Beta 1=3.615290, Beta 2=4.397927, Beta 3=7.696893, Gamma 1=1.342246, Gamma 2=0.621265
+  - Channel: `C3-A1`
+    - Band powers: Delta=34.662746, Theta=16.491643, Alpha=50.184813, Beta=13.019473, High Beta=2.363630, Gamma=2.168263, High Gamma=0.460348, Alpha 1=42.591515, Alpha 2=34.762189, Beta 1=3.208796, Beta 2=3.960314, Beta 3=7.862304, Gamma 1=1.664121, Gamma 2=0.643480
+  - Channel: `C4-A1`
+    - Band powers: Delta=31.767640, Theta=18.443363, Alpha=28.502778, Beta=12.755415, High Beta=2.711445, Gamma=1.965718, High Gamma=0.451296, Alpha 1=24.915795, Alpha 2=16.124130, Beta 1=3.265336, Beta 2=4.027486, Beta 3=7.595703, Gamma 1=1.481901, Gamma 2=0.653944
+  - Channel: `P3-A1`
+    - Band powers: Delta=33.607105, Theta=19.821508, Alpha=60.203889, Beta=14.216291, High Beta=2.183106, Gamma=1.735349, High Gamma=0.372820, Alpha 1=45.609927, Alpha 2=40.450556, Beta 1=4.575504, Beta 2=4.233041, Beta 3=7.629535, Gamma 1=1.316690, Gamma 2=0.535947
+  - Channel: `P4-A1`
+    - Band powers: Delta=33.301410, Theta=20.383697, Alpha=65.097866, Beta=15.480309, High Beta=2.639501, Gamma=2.028014, High Gamma=0.398263, Alpha 1=50.691283, Alpha 2=44.041187, Beta 1=4.869650, Beta 2=4.572453, Beta 3=8.412726, Gamma 1=1.584968, Gamma 2=0.579497
+  - Channel: `O1-A1`
+    - Band powers: Delta=31.222773, Theta=16.850630, Alpha=82.548993, Beta=15.032418, High Beta=2.276882, Gamma=1.780692, High Gamma=0.450976, Alpha 1=50.855426, Alpha 2=67.166474, Beta 1=5.453157, Beta 2=4.315982, Beta 3=7.499515, Gamma 1=1.310678, Gamma 2=0.595849
+  - Channel: `O2-A1`
+    - Band powers: Delta=32.759380, Theta=19.580803, Alpha=84.066047, Beta=16.405310, High Beta=2.516672, Gamma=1.910454, High Gamma=0.447888, Alpha 1=51.967384, Alpha 2=66.360218, Beta 1=5.618895, Beta 2=4.514765, Beta 3=8.422204, Gamma 1=1.435437, Gamma 2=0.609033
+  - Channel: `F7-A1`
+    - Band powers: Delta=41.578636, Theta=10.163898, Alpha=14.539277, Beta=7.150203, High Beta=2.477368, Gamma=1.695770, High Gamma=0.645658, Alpha 1=11.807121, Alpha 2=8.737354, Beta 1=1.897456, Beta 2=2.059820, Beta 3=4.226347, Gamma 1=1.219689, Gamma 2=0.573524
+  - Channel: `F8-A1`
+    - Band powers: Delta=34.766660, Theta=12.487325, Alpha=13.448726, Beta=7.819845, High Beta=1.883941, Gamma=1.718472, High Gamma=0.652222, Alpha 1=11.452013, Alpha 2=7.463427, Beta 1=2.010174, Beta 2=2.378163, Beta 3=4.685144, Gamma 1=1.091347, Gamma 2=0.782723
+  - Channel: `T3-A1`
+    - Band powers: Delta=37.052951, Theta=9.014239, Alpha=17.833225, Beta=9.049174, High Beta=2.744947, Gamma=2.458834, High Gamma=0.883720, Alpha 1=14.642689, Alpha 2=11.821682, Beta 1=2.161789, Beta 2=2.480773, Beta 3=5.599033, Gamma 1=1.637440, Gamma 2=1.032418
+  - Channel: `T4-A1`
+    - Band powers: Delta=22.353940, Theta=9.601391, Alpha=18.546056, Beta=8.593801, High Beta=2.122480, Gamma=2.184498, High Gamma=0.631661, Alpha 1=15.757121, Alpha 2=12.192108, Beta 1=2.223242, Beta 2=2.488304, Beta 3=5.120875, Gamma 1=1.465867, Gamma 2=0.893448
+  - Channel: `T5-A1`
+    - Band powers: Delta=27.291643, Theta=11.949956, Alpha=30.807847, Beta=10.550021, High Beta=2.277563, Gamma=1.645440, High Gamma=0.404854, Alpha 1=22.911861, Alpha 2=20.959196, Beta 1=2.978313, Beta 2=3.080267, Beta 3=6.088767, Gamma 1=1.236340, Gamma 2=0.518562
+  - Channel: `T6-A1`
+    - Band powers: Delta=26.566046, Theta=13.973889, Alpha=46.522425, Beta=12.565159, High Beta=2.505915, Gamma=1.980551, High Gamma=0.424463, Alpha 1=34.686905, Alpha 2=33.487702, Beta 1=3.648342, Beta 2=3.482907, Beta 3=7.114800, Gamma 1=1.541181, Gamma 2=0.575651
+  - Channel: `Fz-A1`
+    - Band powers: Delta=41.897768, Theta=22.050277, Alpha=32.571712, Beta=13.453369, High Beta=2.081305, Gamma=1.636618, High Gamma=0.353364, Alpha 1=27.823065, Alpha 2=18.348796, Beta 1=3.700953, Beta 2=4.371072, Beta 3=7.764994, Gamma 1=1.228265, Gamma 2=0.529593
+  - Channel: `Cz-A1`
+    - Band powers: Delta=41.440418, Theta=23.315364, Alpha=42.365073, Beta=15.876476, High Beta=2.726384, Gamma=2.342059, High Gamma=0.441667, Alpha 1=37.279790, Alpha 2=22.438382, Beta 1=4.202873, Beta 2=4.845349, Beta 3=9.498720, Gamma 1=1.813336, Gamma 2=0.684867
+  - Channel: `Pz-A1`
+    - Band powers: Delta=36.749896, Theta=23.259331, Alpha=63.223880, Beta=15.047473, High Beta=2.267062, Gamma=1.823240, High Gamma=0.388452, Alpha 1=50.897949, Alpha 2=37.831402, Beta 1=4.890150, Beta 2=4.643860, Beta 3=7.991116, Gamma 1=1.377169, Gamma 2=0.574184
+

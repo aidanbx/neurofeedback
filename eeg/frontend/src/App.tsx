@@ -38,6 +38,7 @@ export default function App() {
   const appState   = useDeviceStore((s) => s.appState);
   const programId  = useProgramStore((s) => s.activeProgramId);
   const setProgram = useProgramStore((s) => s.setActiveProgramId);
+  const setOutput  = useProgramStore((s) => s.setOutput);
 
   const [programs, setPrograms]           = useState<ProgramManifest[]>([]);
   const [sidebarOpen, setSidebarOpen]     = useState(true);
@@ -193,7 +194,13 @@ export default function App() {
                     borderLeft: `2px solid ${programId === p.id ? 'var(--accent)' : 'transparent'}`,
                     borderRadius: '0 3px 3px 0',
                   }}
-                  onClick={() => {
+                  onClick={async () => {
+                    if (appState?.recording && programId !== p.id) {
+                      try {
+                        await api.stopTraining();
+                      } catch {}
+                      setOutput(null);
+                    }
                     setProgram(p.id);
                     setSelectedSession(null);
                     setSidebarOpen(false);
