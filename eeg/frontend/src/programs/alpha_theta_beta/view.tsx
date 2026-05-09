@@ -55,8 +55,8 @@ export default function AlphaThetaBetaView() {
   const betaScene     = useAudioScene();
 
   const [masterVol,    setMasterVol]    = useState(0.8);
-  const [responseTime, setResponseTime] = useState(1.2);
-  const [chartWindowSec, setChartWindowSec] = useState(120);
+  const [audioFadeTime, setAudioFadeTime] = useState(1.2);
+  const [chartWindowSec, setChartWindowSec] = useState(30);
   const [showThresholds, setShowThresholds] = useState(true);
 
   const [alphaBase,  setAlphaBase]  = useState(BROWN_NOISE_URL);
@@ -75,19 +75,18 @@ export default function AlphaThetaBetaView() {
   const [betaClearV, setBetaClearV] = useState(0.9);
 
   const [params, setParams] = useState<Record<string, unknown>>({
+    threshold_window_sec: 180,
+    clarity_at_threshold: 0.5,
     alpha_reward_pct: 65,
     theta_reward_pct: 65,
     beta_reward_pct: 65,
   });
 
   const feedbackHistRef = useRef<ATBHistoryPoint[]>([]);
-  const modeRef = useRef<string>('—');
   const [feedbackHistory, setFeedbackHistory] = useState<ATBHistoryPoint[]>([]);
 
   const payload = programOutput?.payload as ATBPayload | undefined;
   const mode    = payload?.mode ?? '—';
-  const calibrating = mode === 'calibrating';
-  const calibPct    = payload ? Math.min(payload.alpha_samples / 60, 1) * 100 : 0;
   const mergeParams = (next: Record<string, unknown>) => setParams((prev) => ({ ...prev, ...next }));
   const paramNumber = (key: string, fallback: number) => {
     const value = params[key];
@@ -118,16 +117,10 @@ export default function AlphaThetaBetaView() {
 
   useEffect(() => {
     if (!payload || !programOutput) return;
-    if (payload.mode !== 'rolling') {
-      modeRef.current = payload.mode;
+    if (feedbackHistRef.current.length > 0 && programOutput.elapsed < feedbackHistRef.current[feedbackHistRef.current.length - 1].x) {
       feedbackHistRef.current = [];
       setFeedbackHistory([]);
-      return;
     }
-    if (modeRef.current !== 'rolling') {
-      feedbackHistRef.current = [];
-    }
-    modeRef.current = payload.mode;
     const e = programOutput.elapsed;
     feedbackHistRef.current = [
       ...feedbackHistRef.current.slice(-720),
@@ -151,11 +144,11 @@ export default function AlphaThetaBetaView() {
     alphaScene.setTrackVolumes(alphaBaseV, alphaClearV);
     thetaScene.setTrackVolumes(thetaBaseV, thetaClearV);
     betaScene.setTrackVolumes(betaBaseV, betaClearV);
-    alphaScene.setCrossfade(payload.drives.alpha, responseTime);
-    thetaScene.setCrossfade(payload.drives.theta, responseTime);
-    betaScene.setCrossfade(payload.drives.beta,   responseTime);
+    alphaScene.setCrossfade(payload.drives.alpha, audioFadeTime);
+    thetaScene.setCrossfade(payload.drives.theta, audioFadeTime);
+    betaScene.setCrossfade(payload.drives.beta,   audioFadeTime);
   }, [
-    payload, programOutput, masterVol, responseTime,
+    payload, programOutput, masterVol, audioFadeTime,
     alphaScene, thetaScene, betaScene,
     alphaBaseV, alphaClearV, thetaBaseV, thetaClearV, betaBaseV, betaClearV,
   ]);
@@ -184,14 +177,6 @@ export default function AlphaThetaBetaView() {
 
   const main = (
     <>
-      {metrics && (
-        <>
-          <Panel title="EEG Waveform">
-            <Waveform t={metrics.live_trace_t} y={metrics.live_trace_y} width={700} height={120} />
-          </Panel>
-        </>
-      )}
-
       <Panel bodyStyle={{ padding: 0 }}>
         <NeurofeedbackCharts
           points={feedbackHistory}
@@ -209,7 +194,7 @@ export default function AlphaThetaBetaView() {
           onChartWindowSecChange={setChartWindowSec}
           showThresholds={showThresholds}
           onShowThresholdsChange={setShowThresholds}
-          emptyLabel="Waiting for rolling baseline before charting."
+          emptyLabel="Waiting for feedback history…"
           barBands={['Alpha', 'Theta', 'Beta']}
         />
       </Panel>
@@ -281,11 +266,13 @@ export default function AlphaThetaBetaView() {
       </Section>
 
       <Section title="Settings" collapsible defaultOpen={false}>
-        <ProgramParamSlider label="Alpha reward rate" min={40} max={85} step={1} value={paramNumber('alpha_reward_pct', 65)} onResolved={mergeParams} programId="alpha_theta_beta" paramKey="alpha_reward_pct" format={(v) => `${v}%`} />
-        <ProgramParamSlider label="Theta reward rate" min={40} max={85} step={1} value={paramNumber('theta_reward_pct', 65)} onResolved={mergeParams} programId="alpha_theta_beta" paramKey="theta_reward_pct" format={(v) => `${v}%`} />
-        <ProgramParamSlider label="Beta reward rate" min={40} max={85} step={1} value={paramNumber('beta_reward_pct', 65)} onResolved={mergeParams} programId="alpha_theta_beta" paramKey="beta_reward_pct" format={(v) => `${v}%`} />
+        <ProgramParamSlider label="Threshold window" min={1} max={300} step={1} value={paramNumber('threshold_window_sec', 180)} onResolved={mergeParams} programId="alpha_theta_beta" paramKey="threshold_window_sec" format={(v) => v < 60 ? `${v}s` : `${(v / 60).toFixed(1)}m`} />
+        <ProgramParamSlider label="Threshold clarity" min={0.05} max={0.95} step={0.05} value={paramNumber('clarity_at_threshold', 0.5)} onResolved={mergeParams} programId="alpha_theta_beta" paramKey="clarity_at_threshold" format={(v) => `${Math.round(v * 100)}%`} />
+        <ProgramParamSlider label="Alpha reward rate" min={0} max={100} step={1} value={paramNumber('alpha_reward_pct', 65)} onResolved={mergeParams} programId="alpha_theta_beta" paramKey="alpha_reward_pct" format={(v) => `${v}%`} />
+        <ProgramParamSlider label="Theta reward rate" min={0} max={100} step={1} value={paramNumber('theta_reward_pct', 65)} onResolved={mergeParams} programId="alpha_theta_beta" paramKey="theta_reward_pct" format={(v) => `${v}%`} />
+        <ProgramParamSlider label="Beta reward rate" min={0} max={100} step={1} value={paramNumber('beta_reward_pct', 65)} onResolved={mergeParams} programId="alpha_theta_beta" paramKey="beta_reward_pct" format={(v) => `${v}%`} />
         <LoggedSlider label="Master volume" min={0} max={100} step={1} value={Math.round(masterVol * 100)} onChange={(v) => { setMasterVol(v / 100); }} format={(v) => `${v}%`} programId="alpha_theta_beta" eventKey="all.master_volume_pct" />
-        <LoggedSlider label="Response time" min={2} max={40} step={1} value={Math.round(responseTime * 10)} onChange={(v) => setResponseTime(v / 10)} format={(v) => `${(v / 10).toFixed(1)}s`} programId="alpha_theta_beta" eventKey="all.response_time_tenths" />
+        <LoggedSlider label="Audio fade time" min={2} max={40} step={1} value={Math.round(audioFadeTime * 10)} onChange={(v) => setAudioFadeTime(v / 10)} format={(v) => `${(v / 10).toFixed(1)}s`} programId="alpha_theta_beta" eventKey="all.audio_fade_time_tenths" />
       </Section>
 
       {stats.length > 0 && (
@@ -303,8 +290,8 @@ export default function AlphaThetaBetaView() {
       title="Alpha-Theta-Beta"
       mode={mode}
       statusText={programOutput?.status_text}
-      calibrating={calibrating}
-      calibrationPct={calibPct}
+      calibrating={false}
+      calibrationPct={0}
       main={main}
       sidebar={sidebar}
     />

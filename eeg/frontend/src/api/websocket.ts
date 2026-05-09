@@ -1,4 +1,5 @@
 import type { StreamMessage } from '../contracts';
+import { BACKEND_WS_ORIGIN } from '../config/appConfig';
 
 type Listener = (msg: StreamMessage) => void;
 
@@ -11,7 +12,7 @@ class EEGWebSocket {
     if (this.ws && this.ws.readyState <= WebSocket.OPEN) return;
     // From file:// (Electron prod), connect directly to backend
     const url = window.location.protocol === 'file:'
-      ? 'ws://127.0.0.1:8765/ws/stream'
+      ? `${BACKEND_WS_ORIGIN}/ws/stream`
       : `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws/stream`;
     this.ws = new WebSocket(url);
     this.ws.onmessage = (e) => {

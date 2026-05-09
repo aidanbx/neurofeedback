@@ -1,16 +1,25 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import fs from 'fs';
+import path from 'path';
+
+const portConfigPath = path.resolve(__dirname, '..', 'config', 'ports.json');
+const portConfig = JSON.parse(fs.readFileSync(portConfigPath, 'utf8')) as {
+  host: string;
+  frontend: number;
+  backend: number;
+};
 
 export default defineConfig({
   plugins: [react()],
   base: './',
   server: {
-    host: '127.0.0.1',
-    port: 3000,
+    host: portConfig.host,
+    port: portConfig.frontend,
     proxy: {
-      '/api': 'http://127.0.0.1:8765',
-      '/ws':  { target: 'ws://127.0.0.1:8765', ws: true },
-      '/audio': 'http://127.0.0.1:8765',
+      '/api': `http://${portConfig.host}:${portConfig.backend}`,
+      '/ws': { target: `ws://${portConfig.host}:${portConfig.backend}`, ws: true },
+      '/audio': `http://${portConfig.host}:${portConfig.backend}`,
     },
   },
   build: {

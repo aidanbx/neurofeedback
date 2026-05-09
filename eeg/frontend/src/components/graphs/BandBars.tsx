@@ -7,6 +7,7 @@ export const BAND_COLORS: Record<string, string> = {
   Alpha:    '#f0cc44',
   SMR:      '#f08030',
   Beta:     '#e05050',
+  'Beta+':  '#ff69b4',
   'Hi-Beta':'#cc55dd',
 };
 

@@ -1,5 +1,6 @@
 import { spawn, ChildProcess } from 'child_process';
 import * as path from 'path';
+import { APP_HOST, BACKEND_PORT } from './appConfig';
 
 let proc: ChildProcess | null = null;
 
@@ -8,7 +9,7 @@ export function startPython(projectRoot: string): void {
   const backendDir = path.join(projectRoot, 'backend');
   proc = spawn(
     'conda',
-    ['run', '-n', 'eeg', 'uvicorn', 'eeg_backend.api.main:app', '--host', '127.0.0.1', '--port', '8765'],
+    ['run', '-n', 'eeg', 'uvicorn', 'eeg_backend.api.main:app', '--host', APP_HOST, '--port', String(BACKEND_PORT)],
     {
       cwd: backendDir,
       stdio: ['ignore', 'pipe', 'pipe'],

@@ -36,11 +36,11 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const electron_1 = require("electron");
 const http = __importStar(require("http"));
 const path = __importStar(require("path"));
+const appConfig_1 = require("./appConfig");
 const pythonProcess_1 = require("./pythonProcess");
 const PROJECT_ROOT = path.join(__dirname, '..');
 const DEV_MODE = process.env.ELECTRON_DEV === '1';
 const DIST_INDEX = path.join(PROJECT_ROOT, 'dist', 'index.html');
-const DEV_SERVER_URL = 'http://127.0.0.1:3000';
 let win = null;
 function canReach(url) {
     return new Promise((resolve) => {
@@ -57,16 +57,16 @@ function canReach(url) {
 }
 async function loadDevServer() {
     for (let attempt = 1; attempt <= 60; attempt += 1) {
-        if (await canReach(DEV_SERVER_URL)) {
-            await win?.loadURL(DEV_SERVER_URL);
+        if (await canReach(appConfig_1.DEV_SERVER_URL)) {
+            await win?.loadURL(appConfig_1.DEV_SERVER_URL);
             return;
         }
         if (attempt === 1) {
-            console.log(`[electron] waiting for Vite dev server at ${DEV_SERVER_URL}`);
+            console.log(`[electron] waiting for Vite dev server at ${appConfig_1.DEV_SERVER_URL}`);
         }
         await new Promise((resolve) => setTimeout(resolve, 500));
     }
-    console.error(`[electron] Vite dev server was not reachable at ${DEV_SERVER_URL}. Run "cd frontend && npm run dev" first.`);
+    console.error(`[electron] Vite dev server was not reachable at ${appConfig_1.DEV_SERVER_URL}. Run "cd frontend && npm run dev" first.`);
 }
 function createWindow() {
     win = new electron_1.BrowserWindow({

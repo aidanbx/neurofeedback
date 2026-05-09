@@ -14,12 +14,14 @@ conda activate eeg
 ## Running
 
 ```bash
-# Backend only (port 8765)
+# Change frontend/backend ports in eeg/config/ports.json
+
+# Backend only
 cd eeg/backend
 conda activate eeg
 uvicorn eeg_backend.api.main:app --reload
 
-# Frontend dev (port 3000, proxies to :8765)
+# Frontend dev
 cd eeg/frontend
 npm install && npm run dev
 ```
