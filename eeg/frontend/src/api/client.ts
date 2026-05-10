@@ -1,4 +1,4 @@
-import type { ProgramManifest, ProgramParamsResponse, SessionEventInput } from '../contracts';
+import type { PSDBaselineAggregate, ProgramManifest, ProgramParamsResponse, SessionEventInput } from '../contracts';
 import { BACKEND_HTTP_ORIGIN } from '../config/appConfig';
 
 // In Vite dev mode, /api is proxied. When loaded from file://, go direct to backend.
@@ -28,6 +28,7 @@ export const api = {
       method: 'POST', body: JSON.stringify({ interval_sec }),
     }),
   getMetricsParams:   () => request<Record<string, unknown>>('/metrics/params'),
+  getPsdBaseline:     () => request<PSDBaselineAggregate>('/metrics/psd-baseline'),
   setMetricsParams:   (params: Record<string, unknown>) =>
     request<{ ok: boolean; params: Record<string, unknown>; changes: Record<string, unknown> }>(
       '/metrics/params',
@@ -50,15 +51,15 @@ export const api = {
   resetBaseline:      () => request<{ ok: boolean }>('/training/reset-baseline', { method: 'POST', body: '{}' }),
   startTraining:      (program?: { id: string; title: string }) =>
     request<{ ok: boolean }>('/training/start', { method: 'POST', body: JSON.stringify({ program }) }),
-  stopTraining:       (options?: { save?: boolean; notes?: string; analyze?: boolean }) =>
+  stopTraining:       (options?: { save?: boolean; notes?: string; analyze?: boolean; include_psd_baseline?: boolean }) =>
     request<{ ok: boolean; saved_to: string | null; pending?: boolean }>(
       '/training/stop',
       { method: 'POST', body: JSON.stringify(options ?? {}) },
     ),
-  saveStoppedTraining: (notes?: string) =>
+  saveStoppedTraining: (notes?: string, includePsdBaseline = false) =>
     request<{ ok: boolean; saved_to: string | null }>('/training/save', {
       method: 'POST',
-      body: JSON.stringify({ notes: notes ?? '', analyze: true }),
+      body: JSON.stringify({ notes: notes ?? '', analyze: true, include_psd_baseline: includePsdBaseline }),
     }),
   discardStoppedTraining: () =>
     request<{ ok: boolean }>('/training/discard', { method: 'POST', body: '{}' }),
@@ -72,6 +73,8 @@ export const api = {
     request<{ ok: boolean; new_id: string }>('/session/favorite', { method: 'POST', body: JSON.stringify({ id, favorite }) }),
   archiveSessions:    (ids: string[]) =>
     request<{ ok: boolean; moved: string[] }>('/session/archive', { method: 'POST', body: JSON.stringify({ ids }) }),
+  deleteSessions:     (ids: string[]) =>
+    request<{ ok: boolean; deleted: string[]; errors: string[] }>('/session/delete', { method: 'POST', body: JSON.stringify({ ids }) }),
   getAudioTracks:     () => request<{ name: string; filename: string; url: string }[]>('/audio-tracks'),
   getPrograms:        () => request<ProgramManifest[]>('/programs'),
 };

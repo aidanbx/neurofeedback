@@ -27,10 +27,13 @@ export function SessionControls({
   const isThis    = active === programId && recording;
   const [showSavePrompt, setShowSavePrompt] = useState(false);
   const [notes, setNotes] = useState('');
+  const [includePsdBaseline, setIncludePsdBaseline] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
 
   const handleStart = async () => {
     setBusy(true);
+    setError('');
     try {
       await api.startTraining({ id: programId, title: programTitle });
       setActive(programId);
@@ -42,11 +45,17 @@ export function SessionControls({
 
   const handleStop = async () => {
     setBusy(true);
+    setError('');
     try {
-      await api.stopTraining({ save: false });
+      const res = await api.stopTraining({ save: false });
       setActive(programId);
       await onStopped?.();
-      setShowSavePrompt(true);
+      if (res.pending) {
+        setShowSavePrompt(true);
+      } else {
+        setShowSavePrompt(false);
+        window.dispatchEvent(new CustomEvent('sessions:changed'));
+      }
     } finally {
       setBusy(false);
     }
@@ -54,10 +63,16 @@ export function SessionControls({
 
   const handleSave = async () => {
     setBusy(true);
+    setError('');
     try {
-      await api.saveStoppedTraining(notes);
+      const res = await api.saveStoppedTraining(notes, includePsdBaseline);
+      if (!res.ok) throw new Error('No stopped session is pending save.');
       setShowSavePrompt(false);
       setNotes('');
+      setIncludePsdBaseline(false);
+      window.dispatchEvent(new CustomEvent('sessions:changed'));
+    } catch (exc) {
+      setError(exc instanceof Error ? exc.message : 'Could not save session.');
     } finally {
       setBusy(false);
     }
@@ -65,10 +80,15 @@ export function SessionControls({
 
   const handleDiscard = async () => {
     setBusy(true);
+    setError('');
     try {
-      await api.discardStoppedTraining();
+      const res = await api.discardStoppedTraining();
+      if (!res.ok) throw new Error('No stopped session is pending discard.');
       setShowSavePrompt(false);
       setNotes('');
+      setIncludePsdBaseline(false);
+    } catch (exc) {
+      setError(exc instanceof Error ? exc.message : 'Could not discard session.');
     } finally {
       setBusy(false);
     }
@@ -124,6 +144,11 @@ export function SessionControls({
             }}
           >
             <div style={{ fontWeight: 700, fontSize: 15 }}>Save this session?</div>
+            {error && (
+              <div style={{ color: 'var(--poor)', fontSize: 12, lineHeight: 1.4 }}>
+                {error}
+              </div>
+            )}
             <textarea
               value={notes}
               onChange={(event) => setNotes(event.target.value)}
@@ -141,6 +166,20 @@ export function SessionControls({
                 boxSizing: 'border-box',
               }}
             />
+            <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 12, color: 'var(--text)', lineHeight: 1.45 }}>
+              <input
+                type="checkbox"
+                checked={includePsdBaseline}
+                onChange={(event) => setIncludePsdBaseline(event.target.checked)}
+                style={{ marginTop: 2 }}
+              />
+              <span>
+                Include this session in the forever PSD baseline
+                <span style={{ display: 'block', color: 'var(--muted)', fontSize: 11 }}>
+                  Use this only for clean sessions you want future z-score spectrograms to treat as reference history.
+                </span>
+              </span>
+            </label>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button
                 type="button"

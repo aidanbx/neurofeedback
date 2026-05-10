@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
 import fs from 'node:fs';
 import net from 'node:net';
 import path from 'node:path';
@@ -73,6 +73,40 @@ async function reuseRunningBackend() {
   await waitUntilKilled();
 }
 
+function pidsListeningOnPort() {
+  return new Promise((resolve) => {
+    execFile('lsof', ['-tiTCP:' + PORT, '-sTCP:LISTEN'], (error, stdout) => {
+      if (error) {
+        resolve([]);
+        return;
+      }
+      const pids = stdout
+        .split(/\s+/)
+        .map((value) => Number(value))
+        .filter((value) => Number.isInteger(value) && value > 0 && value !== process.pid);
+      resolve([...new Set(pids)]);
+    });
+  });
+}
+
+async function stopRunningBackend() {
+  const pids = await pidsListeningOnPort();
+  if (pids.length === 0) return;
+  console.log(`[dev-backend] Stopping existing backend on ${HOST}:${PORT}: ${pids.join(', ')}`);
+  for (const pid of pids) {
+    try {
+      process.kill(pid, 'SIGTERM');
+    } catch {}
+  }
+  if (await waitForPortRelease(4000)) return;
+  for (const pid of pids) {
+    try {
+      process.kill(pid, 'SIGKILL');
+    } catch {}
+  }
+  await waitForPortRelease(2000);
+}
+
 async function launchBackend() {
   let retriedAfterPortConflict = false;
 
@@ -124,8 +158,11 @@ async function launchBackend() {
   }
 }
 
-if (await backendHealthy()) {
+if (await backendHealthy() && process.env.EEG_REUSE_BACKEND === '1') {
   await reuseRunningBackend();
 } else {
+  if (await canConnect()) {
+    await stopRunningBackend();
+  }
   await launchBackend();
 }

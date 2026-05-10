@@ -129,7 +129,13 @@ class SessionApp:
             data={"program": enriched_program},
         )
 
-    def stop_training(self, *, save: bool = False, notes: str | None = None) -> Path | None:
+    def stop_training(
+        self,
+        *,
+        save: bool = False,
+        notes: str | None = None,
+        include_psd_baseline: bool = False,
+    ) -> Path | None:
         with self.lock:
             active_program = self.active_program_id
         elapsed = self.recorder.session_duration_sec()
@@ -141,10 +147,22 @@ class SessionApp:
         )
         with self.lock:
             self.active_program_id = None
-        return self.recorder.stop_recording(save=save, notes=notes)
+        return self.recorder.stop_recording(
+            save=save,
+            notes=notes,
+            include_psd_baseline=include_psd_baseline,
+        )
 
-    def save_stopped_training(self, notes: str | None = None) -> Path | None:
-        return self.recorder.save_stopped_recording(notes=notes)
+    def save_stopped_training(
+        self,
+        notes: str | None = None,
+        *,
+        include_psd_baseline: bool = False,
+    ) -> Path | None:
+        return self.recorder.save_stopped_recording(
+            notes=notes,
+            include_psd_baseline=include_psd_baseline,
+        )
 
     def discard_stopped_training(self) -> bool:
         with self.lock:
@@ -273,6 +291,12 @@ class SessionApp:
 
             if should_log and started_at is not None:
                 self._log_input_trace(snap, relative_4_30_d, band_features, elapsed, now)
+            if recording and started_at is not None:
+                self.recorder.write_psd_snapshot(
+                    elapsed=elapsed,
+                    freqs=frame.psd_freqs,
+                    values=frame.psd_values,
+                )
             if program_out is not None and recording:
                 self.recorder.write_program_output(program_out)
 

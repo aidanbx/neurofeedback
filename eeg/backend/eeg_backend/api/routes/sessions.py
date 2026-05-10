@@ -150,6 +150,23 @@ async def archive_sessions(body: dict):
     return {"ok": True, "moved": moved, "errors": errors}
 
 
+@router.post("/session/delete")
+async def delete_sessions(body: dict):
+    ids = body.get("ids", [])
+    deleted, errors = [], []
+    for sid in ids:
+        if not re.match(r"^[\w]+$", sid):
+            errors.append(f"invalid id: {sid}")
+            continue
+        src = SESSIONS / sid
+        if not src.is_dir():
+            errors.append(f"not found: {sid}")
+            continue
+        shutil.rmtree(src)
+        deleted.append(sid)
+    return {"ok": True, "deleted": deleted, "errors": errors}
+
+
 @router.get("/session/{session_id}/{filename}")
 async def serve_session_file(session_id: str, filename: str):
     safe_name = Path(filename).name
