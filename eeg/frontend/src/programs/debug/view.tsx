@@ -6,6 +6,7 @@ import { Panel } from '../../components/layout/Panel';
 import { AudioTrackPlayer } from '../../components/audio/AudioTrackPlayer';
 import { BandPowerPanel } from '../../components/graphs/BandPowerPanel';
 import { RollingBandDiagnostics } from '../../components/graphs/RollingBandDiagnostics';
+import { SpectralHistoryPanel } from '../../components/graphs/SpectralHistoryPanel';
 import { Waveform } from '../../components/graphs/Waveform';
 import { SignalPanel } from '../../components/signal/SignalPanel';
 import { SessionControls } from '../../components/session/SessionControls';
@@ -15,6 +16,7 @@ import { ProgramParamButton, ProgramParamSlider } from '../../components/control
 export default function DebugView() {
   const metrics = useDeviceStore((s) => s.metrics);
   const appState = useDeviceStore((s) => s.appState);
+  const [psdFocused, setPsdFocused] = useState(false);
   const [params, setParams] = useState<Record<string, unknown>>({
     eyes_closed: false,
     debug_gain: 1,
@@ -45,21 +47,39 @@ export default function DebugView() {
   const main = (
     <>
       {metrics ? (
-        <>
-          <Panel title="EEG Waveform">
-            <Waveform t={metrics.live_trace_t} y={metrics.live_trace_y} height={190} />
-          </Panel>
+        psdFocused ? (
+          <SignalPanel
+            metrics={metrics}
+            appState={appState}
+            psdFocused={psdFocused}
+            onPsdFocusToggle={() => setPsdFocused((focused) => !focused)}
+          />
+        ) : (
+          <>
+            <Panel title="EEG Waveform">
+              <Waveform t={metrics.live_trace_t} y={metrics.live_trace_y} height={190} />
+            </Panel>
 
-          <Panel title="Band Power">
-            <BandPowerPanel timelineHeight={240} />
-          </Panel>
+            <Panel title="Band Power">
+              <BandPowerPanel timelineHeight={240} />
+            </Panel>
 
-          <Panel title="Rolling Band Diagnostics">
-            <RollingBandDiagnostics bands={['Alpha', 'Theta', 'Beta', 'SMR']} initialMode="baseline_delta" />
-          </Panel>
+            <Panel title="Rolling Band Diagnostics">
+              <RollingBandDiagnostics bands={['Alpha', 'Theta', 'Beta', 'SMR']} initialMode="baseline_delta" />
+            </Panel>
 
-          <SignalPanel metrics={metrics} appState={appState} />
-        </>
+            <SignalPanel
+              metrics={metrics}
+              appState={appState}
+              psdFocused={psdFocused}
+              onPsdFocusToggle={() => setPsdFocused((focused) => !focused)}
+            />
+
+            <Panel title="Spectral History">
+              <SpectralHistoryPanel />
+            </Panel>
+          </>
+        )
       ) : (
         <div style={{ color: 'var(--muted)', padding: 24 }}>Waiting for signal…</div>
       )}
@@ -156,6 +176,7 @@ export default function DebugView() {
     <ProgramLayout
       title="Debug"
       mode="signal diagnostics"
+      mainFullWidth={psdFocused}
       main={main}
       sidebar={sidebar}
     />

@@ -23,9 +23,11 @@ function qualColor(v: number, good: number, fair: number, invert = false) {
 interface Props {
   metrics: MetricsSnapshot;
   appState: AppState | null;
+  psdFocused?: boolean;
+  onPsdFocusToggle?: () => void;
 }
 
-export function SignalPanel({ metrics, appState }: Props) {
+export function SignalPanel({ metrics, appState, psdFocused = false, onPsdFocusToggle }: Props) {
   const metricsBatch    = useDeviceStore((s) => s.metricsBatch);
   const qualityHistoryRef = useRef<Pt[]>([]);
   const qualityXRef       = useRef(0);
@@ -56,31 +58,54 @@ export function SignalPanel({ metrics, appState }: Props) {
   return (
     <Panel title="Signal">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <SignalControls appState={appState} />
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(280px, 0.8fr) minmax(0, 1.2fr)', gap: 10 }}>
-          <div>
-            <StatsGrid stats={diagStats} />
-            <div style={{ marginTop: 8, color: 'var(--muted)', fontSize: 11, lineHeight: 1.6 }}>
-              60Hz noise is calculated from the raw unnotched diagnostic PSD. The grey PSD trace is raw before notch; the blue trace is the currently processed signal.
+        <div style={{ display: 'grid', gridTemplateColumns: onPsdFocusToggle ? 'minmax(0, 1fr) auto' : '1fr', gap: 8, alignItems: 'center' }}>
+          <SignalControls appState={appState} />
+          {onPsdFocusToggle && (
+            <button
+              type="button"
+              className={`btn${psdFocused ? ' active' : ''}`}
+              onClick={onPsdFocusToggle}
+              title={psdFocused ? 'Return to the full debug view' : 'Expand the PSD plot across the main debug view'}
+              style={{ height: '100%' }}
+            >
+              {psdFocused ? 'Exit PSD focus' : 'Focus PSD'}
+            </button>
+          )}
+        </div>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: psdFocused ? 'minmax(0, 1fr)' : 'minmax(280px, 0.8fr) minmax(0, 1.2fr)',
+            gap: 10,
+          }}
+        >
+          {!psdFocused && (
+            <div>
+              <StatsGrid stats={diagStats} />
+              <div style={{ marginTop: 8, color: 'var(--muted)', fontSize: 11, lineHeight: 1.6 }}>
+                60Hz noise is calculated from the raw unnotched diagnostic PSD. The grey PSD trace is raw before notch; the blue trace is the currently processed signal.
+              </div>
             </div>
-          </div>
+          )}
           <PSDPlot
             freqs={metrics.psd_freqs}
             values={metrics.psd_values}
             referenceFreqs={metrics.raw_psd_freqs}
             referenceValues={metrics.raw_psd_values}
             referenceLabel="raw before notch"
-            height={220}
+            height={psdFocused ? 460 : 220}
             maxFreq={70}
           />
         </div>
-        <TimelineChart
-          series={[{ label: 'Quality', color: '#88aaff', points: qualityHistory, threshold: 55 }]}
-          height={170}
-          windowSec={120}
-          yMin={0}
-          yMax={100}
-        />
+        {!psdFocused && (
+          <TimelineChart
+            series={[{ label: 'Quality', color: '#88aaff', points: qualityHistory, threshold: 55 }]}
+            height={170}
+            windowSec={120}
+            yMin={0}
+            yMax={100}
+          />
+        )}
       </div>
     </Panel>
   );

@@ -14,7 +14,7 @@ from eeg_backend.reports.base import load_program_outputs
 from eeg_backend.sessions import event_log as event_log_module
 from eeg_backend.sessions import recorder as recorder_module
 from eeg_backend.sessions.event_log import SessionEventLog
-from eeg_backend.sessions.recorder import SessionRecorder
+from eeg_backend.sessions.recorder import SessionRecorder, load_psd_baseline
 
 
 def test_program_manifests_validate():
@@ -99,10 +99,72 @@ def test_recorder_writes_program_outputs_jsonl_and_loader_reads_legacy_csv():
         assert legacy_rows[0]["payload"]["clarity"] == "0.5"
 
 
+def test_recorder_pending_save_and_discard():
+    with tempfile.TemporaryDirectory() as tmp:
+        recorder_module.SESSIONS = Path(tmp)
+        rec = SessionRecorder()
+        rec.start_recording()
+        pending_id = rec.recording_id
+        assert rec.stop_recording(save=False) is None
+        assert pending_id is not None
+        assert not (Path(tmp) / pending_id / "metadata.json").exists()
+
+        saved = rec.save_stopped_recording(notes="felt calm")
+        assert saved is not None
+        assert (saved / "metadata.json").exists()
+        note_files = list(saved.glob("*.md"))
+        assert note_files
+        assert "felt calm" in note_files[0].read_text()
+
+        rec.start_recording()
+        discard_id = rec.recording_id
+        assert rec.stop_recording(save=False) is None
+        assert rec.discard_stopped_recording() is True
+        assert discard_id is not None
+        assert not (Path(tmp) / discard_id).exists()
+
+
+def test_recorder_writes_psd_history_and_opt_in_baseline():
+    with tempfile.TemporaryDirectory() as tmp:
+        recorder_module.SESSIONS = Path(tmp)
+        rec = SessionRecorder()
+        rec.start_recording()
+        rec.write_psd_snapshot(
+            elapsed=0.25,
+            freqs=[0.0, 0.5, 1.0],
+            values=[0.01, 0.1, 1.0],
+        )
+        saved = rec.stop_recording(save=True, include_psd_baseline=False)
+        assert saved is not None
+        psd_file = saved / "psd_history.jsonl"
+        assert psd_file.exists()
+        row = json.loads(psd_file.read_text().splitlines()[0])
+        assert row["elapsed"] == 0.25
+        assert row["freqs"] == [0.0, 0.5, 1.0]
+        assert not (Path(tmp) / "psd_baseline_aggregate.json").exists()
+
+        rec.start_recording()
+        rec.write_psd_snapshot(
+            elapsed=0.25,
+            freqs=[0.0, 0.5, 1.0],
+            values=[0.01, 0.1, 1.0],
+        )
+        saved = rec.stop_recording(save=True, include_psd_baseline=True)
+        assert saved is not None
+        baseline = load_psd_baseline(Path(tmp) / "psd_baseline_aggregate.json")
+        assert len(baseline["counts"]) == len(baseline["freq_bins"])
+        assert len(baseline["counts"][0]) == len(baseline["log_power_bins"])
+        assert baseline["stats"]["n"][0] == 1
+        assert baseline["stats"]["n"][1] == 1
+        assert baseline["stats"]["n"][2] == 1
+
+
 if __name__ == "__main__":
     test_program_manifests_validate()
     test_invalid_manifest_rejected()
     test_resolve_settings_defaults_and_clamps()
     test_event_log_writes_canonical_jsonl()
     test_recorder_writes_program_outputs_jsonl_and_loader_reads_legacy_csv()
+    test_recorder_pending_save_and_discard()
+    test_recorder_writes_psd_history_and_opt_in_baseline()
     print("All foundation tests passed")

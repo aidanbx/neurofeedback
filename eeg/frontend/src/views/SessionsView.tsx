@@ -36,18 +36,49 @@ export function SessionsList({ onSelect, selectedId }: ListProps) {
   const [sessions, setSessions]     = useState<SessionMeta[]>([]);
   const [selectMode, setSelectMode] = useState(false);
   const [checked, setChecked]       = useState<Set<string>>(new Set());
+  const [lastCheckedId, setLastCheckedId] = useState<string | null>(null);
 
   const load = () => api.getSessions().then((s) => setSessions(s as SessionMeta[])).catch(() => {});
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    const reload = () => load();
+    window.addEventListener('sessions:changed', reload);
+    return () => window.removeEventListener('sessions:changed', reload);
+  }, []);
 
-  const toggleCheck = (id: string) => setChecked((prev) => {
-    const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next;
+  const toggleCheck = (id: string, shiftKey: boolean) => setChecked((prev) => {
+    const next = new Set(prev);
+    const nextChecked = !next.has(id);
+    if (shiftKey && lastCheckedId) {
+      const from = sessions.findIndex((session) => session.id === lastCheckedId);
+      const to = sessions.findIndex((session) => session.id === id);
+      if (from >= 0 && to >= 0) {
+        const [start, end] = from < to ? [from, to] : [to, from];
+        sessions.slice(start, end + 1).forEach((session) => {
+          if (nextChecked) next.add(session.id);
+          else next.delete(session.id);
+        });
+        setLastCheckedId(id);
+        return next;
+      }
+    }
+    nextChecked ? next.add(id) : next.delete(id);
+    setLastCheckedId(id);
+    return next;
   });
 
   const archive = async () => {
     if (!checked.size) return;
     await api.archiveSessions([...checked]).catch(() => {});
-    setChecked(new Set()); setSelectMode(false); load();
+    setChecked(new Set()); setLastCheckedId(null); setSelectMode(false); load();
+  };
+
+  const deleteSelected = async () => {
+    if (!checked.size) return;
+    const count = checked.size;
+    if (!window.confirm(`Delete ${count} selected session${count === 1 ? '' : 's'} permanently?`)) return;
+    await api.deleteSessions([...checked]).catch(() => {});
+    setChecked(new Set()); setLastCheckedId(null); setSelectMode(false); load();
   };
 
   return (
@@ -55,13 +86,18 @@ export function SessionsList({ onSelect, selectedId }: ListProps) {
       <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 4 }}>
         <span className="nf-section-title" style={{ flex: 1, borderBottom: 'none', paddingBottom: 0 }}>Sessions</span>
         <button className={`btn${selectMode ? ' active' : ''}`} style={{ fontSize: 10, padding: '2px 7px' }}
-          onClick={() => { setSelectMode((v) => !v); setChecked(new Set()); }}>
+          onClick={() => { setSelectMode((v) => !v); setChecked(new Set()); setLastCheckedId(null); }}>
           Select
         </button>
         {selectMode && checked.size > 0 && (
-          <button className="btn btn-danger" style={{ fontSize: 10, padding: '2px 7px' }} onClick={archive}>
-            Archive ({checked.size})
-          </button>
+          <>
+            <button className="btn" style={{ fontSize: 10, padding: '2px 7px' }} onClick={archive}>
+              Archive ({checked.size})
+            </button>
+            <button className="btn btn-danger" style={{ fontSize: 10, padding: '2px 7px' }} onClick={deleteSelected}>
+              Delete ({checked.size})
+            </button>
+          </>
         )}
       </div>
 
@@ -85,8 +121,16 @@ export function SessionsList({ onSelect, selectedId }: ListProps) {
             }}
           >
             {selectMode && (
-              <input type="checkbox" checked={checked.has(s.id)} onChange={() => toggleCheck(s.id)}
-                style={{ marginTop: 3, flexShrink: 0 }} onClick={(e) => e.stopPropagation()} />
+              <input
+                type="checkbox"
+                checked={checked.has(s.id)}
+                onChange={() => {}}
+                style={{ marginTop: 3, flexShrink: 0 }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleCheck(s.id, e.shiftKey);
+                }}
+              />
             )}
             <button
               style={{ background: 'none', border: 'none', cursor: 'pointer', color: s.is_favorite ? 'var(--fair)' : 'var(--muted)', fontSize: 14, padding: 0, flexShrink: 0, lineHeight: 1 }}

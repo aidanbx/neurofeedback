@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
+from ...sessions.recorder import load_psd_baseline
+
 router = APIRouter()
 
 _app = None
@@ -16,6 +18,11 @@ def set_app(app) -> None:
 @router.get("/metrics/params")
 async def get_metrics_params():
     return _app.metrics_engine.get_params()
+
+
+@router.get("/metrics/psd-baseline")
+async def get_psd_baseline():
+    return load_psd_baseline()
 
 
 @router.post("/metrics/params")

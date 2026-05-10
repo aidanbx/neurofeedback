@@ -66,6 +66,24 @@ export interface ProgramParamsResponse {
   settings_schema: Record<string, SettingSpec>;
 }
 
+export interface PSDBaselineAggregate {
+  version: number;
+  freq_min_hz: number;
+  freq_max_hz: number;
+  freq_bin_hz: number;
+  log_power_min: number;
+  log_power_max: number;
+  log_power_bin: number;
+  freq_bins: number[];
+  log_power_bins: number[];
+  counts: number[][];
+  stats: {
+    n: number[];
+    mean: number[];
+    m2: number[];
+  };
+}
+
 export interface SessionEventInput {
   type: string;
   source?: string;

@@ -10,6 +10,7 @@ interface Props {
   statusText?: string;
   calibrating?: boolean;
   calibrationPct?: number;
+  mainFullWidth?: boolean;
   main: ReactNode;
   sidebar: ReactNode;
 }
@@ -25,7 +26,7 @@ function RecDot({ recording }: { recording: boolean }) {
   );
 }
 
-export function ProgramLayout({ title, mode, statusText, calibrating, calibrationPct = 0, main, sidebar }: Props) {
+export function ProgramLayout({ title, mode, statusText, calibrating, calibrationPct = 0, mainFullWidth = false, main, sidebar }: Props) {
   const appState = useDeviceStore((s) => s.appState);
   const metrics  = useDeviceStore((s) => s.metrics);
   const recording = appState?.recording ?? false;
@@ -53,12 +54,13 @@ export function ProgramLayout({ title, mode, statusText, calibrating, calibratio
             className="btn"
             type="button"
             onClick={() => setSidebarCollapsed((collapsed) => !collapsed)}
-            aria-expanded={!sidebarCollapsed}
+            disabled={mainFullWidth}
+            aria-expanded={!sidebarCollapsed && !mainFullWidth}
             aria-label={sidebarCollapsed ? 'Show settings panel' : 'Hide settings panel'}
-            title={sidebarCollapsed ? 'Show settings panel' : 'Hide settings panel'}
-            style={{ padding: '4px 8px', minWidth: 32, lineHeight: 1 }}
+            title={mainFullWidth ? 'Settings panel hidden while focused' : sidebarCollapsed ? 'Show settings panel' : 'Hide settings panel'}
+            style={{ padding: '4px 8px', minWidth: 32, lineHeight: 1, opacity: mainFullWidth ? 0.45 : 1 }}
           >
-            {sidebarCollapsed ? '◀' : '▶'}
+            {sidebarCollapsed || mainFullWidth ? '◀' : '▶'}
           </button>
         </span>
       </div>
@@ -69,12 +71,12 @@ export function ProgramLayout({ title, mode, statusText, calibrating, calibratio
           flex: 1,
           overflow: 'hidden',
           display: 'grid',
-          gridTemplateColumns: sidebarCollapsed ? 'minmax(0, 1fr) 0px' : 'minmax(0, 2fr) minmax(280px, 1fr)',
+          gridTemplateColumns: mainFullWidth || sidebarCollapsed ? 'minmax(0, 1fr) 0px' : 'minmax(0, 2fr) minmax(280px, 1fr)',
           transition: 'grid-template-columns 0.2s ease',
         }}
       >
         {/* Main column */}
-        <div style={{ position: 'relative', overflow: 'auto', display: 'flex', flexDirection: 'column', background: '#05060a', borderRight: sidebarCollapsed ? 'none' : '1px solid var(--border)' }}>
+        <div style={{ position: 'relative', overflow: 'auto', display: 'flex', flexDirection: 'column', background: '#05060a', borderRight: sidebarCollapsed || mainFullWidth ? 'none' : '1px solid var(--border)' }}>
           <div style={{ flex: 1, padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
             {main}
           </div>
@@ -102,13 +104,13 @@ export function ProgramLayout({ title, mode, statusText, calibrating, calibratio
         <div
           style={{
             overflow: 'auto',
-            padding: sidebarCollapsed ? 0 : 10,
+            padding: sidebarCollapsed || mainFullWidth ? 0 : 10,
             display: 'flex',
             flexDirection: 'column',
             gap: 8,
             background: 'var(--sidebar)',
-            opacity: sidebarCollapsed ? 0 : 1,
-            pointerEvents: sidebarCollapsed ? 'none' : 'auto',
+            opacity: sidebarCollapsed || mainFullWidth ? 0 : 1,
+            pointerEvents: sidebarCollapsed || mainFullWidth ? 'none' : 'auto',
             transition: 'opacity 0.15s ease, padding 0.15s ease',
           }}
         >
