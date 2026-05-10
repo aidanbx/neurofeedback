@@ -15,6 +15,7 @@ interface Props {
   label?: string;
   selectedUrl?: string;
   onSelectedUrlChange?: (url: string) => void;
+  library?: 'tracks' | 'effects';
 }
 
 function fmtTime(sec: number): string {
@@ -46,6 +47,7 @@ export function AudioTrackPlayer({
   label = 'Track',
   selectedUrl,
   onSelectedUrlChange,
+  library = 'tracks',
 }: Props) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -74,10 +76,11 @@ export function AudioTrackPlayer({
   };
 
   useEffect(() => {
-    api.getAudioTracks()
+    const load = library === 'effects' ? api.getAudioEffects : api.getAudioTracks;
+    load()
       .then(setTracks)
       .catch(() => setStatus('Could not load tracks'));
-  }, []);
+  }, [library]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -230,7 +233,7 @@ export function AudioTrackPlayer({
         <span>{label}</span>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <select value={currentSelectedUrl} onChange={(e) => handleSelect(e.target.value)} style={{ width: '100%' }}>
-            <option value="silence">- Select track -</option>
+            <option value="silence">- Select {library === 'effects' ? 'sound' : 'track'} -</option>
             {tracks.map((track) => (
               <option key={track.url} value={track.url}>{track.name}</option>
             ))}

@@ -4,10 +4,22 @@ import { api } from '../../api/client';
 import { useDeviceStore } from '../../state/deviceStore';
 import { ComponentSettings } from '../controls/ComponentSettings';
 import { RangeSlider } from '../controls/RangeSlider';
+import { Slider } from '../controls/Slider';
 import { useCanvasSize } from './useCanvasSize';
 
 type SpectrogramMode = 'forever_zscore' | 'session_zscore' | 'causal_zscore' | 'log_power';
 type PsdScaleMode = 'log_power' | 'absolute_power';
+
+export interface SpectralBandOverlay {
+  id: string;
+  label: string;
+  lo_hz: number;
+  hi_hz: number;
+  color?: string;
+  threshold?: number;
+  feature?: string;
+  active?: boolean;
+}
 
 interface PsdSample {
   x: number;
@@ -45,7 +57,7 @@ const PSD_PLOT_H = 260;
 const AXIS_H = 18;
 const RAIL_H = 34;
 const SPECTRO_H = 380;
-const LOG_STEP = 0.15;
+const LOG_STEP = 0.05;
 
 const MODE_LABELS: Record<SpectrogramMode, string> = {
   forever_zscore: 'Forever z-score',
@@ -201,7 +213,13 @@ function drawBandRail(ctx: CanvasRenderingContext2D, width: number, height: numb
   ctx.stroke();
 }
 
-export function SpectralHistoryPanel() {
+export function SpectralHistoryPanel({
+  bandOverlays = [],
+  defaultShowBandOverlays = true,
+}: {
+  bandOverlays?: SpectralBandOverlay[];
+  defaultShowBandOverlays?: boolean;
+}) {
   const metricsBatch = useDeviceStore((state) => state.metricsBatch);
   const latestMetrics = useDeviceStore((state) => state.metrics);
   const recording = useDeviceStore((state) => state.appState?.recording ?? false);
@@ -220,9 +238,13 @@ export function SpectralHistoryPanel() {
   const [psdScaleMode, setPsdScaleMode] = useState<PsdScaleMode>('log_power');
   const [logMin, setLogMin] = useState(-5);
   const [logMax, setLogMax] = useState(2);
+  const [spectrogramLogMin, setSpectrogramLogMin] = useState(-5);
+  const [spectrogramLogMax, setSpectrogramLogMax] = useState(2);
   const [absMin, setAbsMin] = useState(0);
   const [absMax, setAbsMax] = useState(20);
   const [spectrogramWindowSec, setSpectrogramWindowSec] = useState(60);
+  const [cursorHz, setCursorHz] = useState(10);
+  const [showBandOverlays, setShowBandOverlays] = useState(defaultShowBandOverlays);
   const [baseline, setBaseline] = useState<PSDBaselineAggregate | null>(null);
   const [, forceRender] = useState(0);
 
@@ -307,13 +329,13 @@ export function SpectralHistoryPanel() {
         if (matrix[fi]) matrix[fi][pi] += 1;
       });
     });
-    const maxCount = Math.max(1, ...matrix.flat());
+    const countScale = Math.max(4, Math.sqrt(Math.max(1, binned.length)) * 2.2);
     const cellW = Math.max(1, plotW / Math.max(1, visibleFreqs.length));
     const cellH = Math.max(1, plotH / powerBins);
     matrix.forEach((col, fi) => {
       col.forEach((count, pi) => {
         if (count <= 0) return;
-        ctx.fillStyle = heatColor(Math.sqrt(count / maxCount));
+        ctx.fillStyle = heatColor(Math.min(1, Math.sqrt(count / countScale)));
         const x = PAD_L + fi * cellW;
         const y = PAD_T + (powerBins - 1 - pi) * cellH;
         ctx.fillRect(x, y, Math.ceil(cellW), Math.ceil(cellH));
@@ -367,11 +389,106 @@ export function SpectralHistoryPanel() {
       });
     }
 
+    const cursorX = fToX(Math.max(minFreq, Math.min(maxFreq, cursorHz)));
+    ctx.strokeStyle = '#ffffffaa';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 4]);
+    ctx.beginPath();
+    ctx.moveTo(cursorX, PAD_T);
+    ctx.lineTo(cursorX, PAD_T + plotH);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#eaf3ff';
+    ctx.font = '10px ui-monospace, monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(`${cursorHz.toFixed(1)} Hz`, Math.max(PAD_L + 24, Math.min(width - PAD_R - 24, cursorX)), PAD_T + 12);
+
+    if (showBandOverlays && bandOverlays.length > 0) {
+      bandOverlays.forEach((band, index) => {
+        if (band.hi_hz <= minFreq || band.lo_hz >= maxFreq) return;
+        const color = band.color ?? BANDS[index % BANDS.length]?.color ?? '#ffffff';
+        const x0 = fToX(Math.max(minFreq, band.lo_hz));
+        const x1 = fToX(Math.min(maxFreq, band.hi_hz));
+        ctx.fillStyle = `${color}1f`;
+        ctx.fillRect(x0, PAD_T, Math.max(2, x1 - x0), plotH);
+        ctx.strokeStyle = band.active ? color : `${color}aa`;
+        ctx.lineWidth = band.active ? 2 : 1;
+        ctx.strokeRect(x0, PAD_T, Math.max(2, x1 - x0), plotH);
+        ctx.fillStyle = color;
+        ctx.textAlign = 'left';
+        ctx.font = '10px ui-monospace, monospace';
+        ctx.fillText(`${band.label} ${band.lo_hz}-${band.hi_hz}Hz`, x0 + 4, PAD_T + 26 + (index % 3) * 13);
+        if (Number.isFinite(band.threshold)) {
+          const threshold = Number(band.threshold);
+          const thresholdValue = isLogScale && band.feature !== 'absolute_power'
+            ? threshold / Math.LN10
+            : threshold;
+          if (thresholdValue >= rangeMin && thresholdValue <= rangeMax) {
+            const ty = yToY(thresholdValue);
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+            ctx.setLineDash([6, 3]);
+            ctx.beginPath();
+            ctx.moveTo(x0, ty);
+            ctx.lineTo(x1, ty);
+            ctx.stroke();
+            ctx.setLineDash([]);
+          }
+        }
+      });
+    }
+
     drawAxes(ctx, width, height, minFreq, maxFreq, fToX);
     drawBandRail(ctx, width, height, minFreq, maxFreq, fToX);
     ctx.fillStyle = '#858595';
     ctx.fillText(`${binned.length} PSD snapshots`, PAD_L + 4, 12);
-  }, [binned, latest, visibleFreqs, minFreq, maxFreq, binHz, width, psdScaleMode, logMin, logMax, absMin, absMax]);
+  }, [binned, latest, visibleFreqs, minFreq, maxFreq, binHz, width, psdScaleMode, logMin, logMax, absMin, absMax, cursorHz, showBandOverlays, bandOverlays]);
+
+  useEffect(() => {
+    const canvas = psdCanvasRef.current;
+    if (!canvas) return;
+    const height = PSD_PLOT_H + AXIS_H + RAIL_H;
+    const plotW = width - PAD_L - PAD_R;
+    const fSpan = maxFreq - minFreq || 1;
+    const xToFreq = (x: number) => minFreq + ((x - PAD_L) / Math.max(1, plotW)) * fSpan;
+    let dragging = false;
+
+    const setFromEvent = (event: PointerEvent) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = Math.max(PAD_L, Math.min(width - PAD_R, event.clientX - rect.left));
+      setCursorHz(Number(Math.max(minFreq, Math.min(maxFreq, xToFreq(x))).toFixed(1)));
+    };
+
+    const onPointerDown = (event: PointerEvent) => {
+      const rect = canvas.getBoundingClientRect();
+      const y = event.clientY - rect.top;
+      if (y < 0 || y > height - RAIL_H) return;
+      dragging = true;
+      canvas.setPointerCapture(event.pointerId);
+      setFromEvent(event);
+      event.preventDefault();
+    };
+    const onPointerMove = (event: PointerEvent) => {
+      if (!dragging) return;
+      setFromEvent(event);
+      event.preventDefault();
+    };
+    const stopDrag = (event: PointerEvent) => {
+      dragging = false;
+      try { canvas.releasePointerCapture(event.pointerId); } catch {}
+    };
+
+    canvas.addEventListener('pointerdown', onPointerDown);
+    canvas.addEventListener('pointermove', onPointerMove);
+    canvas.addEventListener('pointerup', stopDrag);
+    canvas.addEventListener('pointercancel', stopDrag);
+    return () => {
+      canvas.removeEventListener('pointerdown', onPointerDown);
+      canvas.removeEventListener('pointermove', onPointerMove);
+      canvas.removeEventListener('pointerup', stopDrag);
+      canvas.removeEventListener('pointercancel', stopDrag);
+    };
+  }, [maxFreq, minFreq, width]);
 
   useEffect(() => {
     const canvas = specCanvasRef.current;
@@ -428,7 +545,7 @@ export function SpectralHistoryPanel() {
           value = zFromStat(log, causalBefore);
         }
         causalStats.set(freq, runningUpdate(causalBefore ?? { n: 0, mean: 0, m2: 0 }, log));
-        return { freq, color: mode === 'log_power' ? logColor(value, logMin, logMax) : zColor(value) };
+        return { freq, color: mode === 'log_power' ? logColor(value, spectrogramLogMin, spectrogramLogMax) : zColor(value) };
       }).filter((cell): cell is { freq: number; color: string } => Boolean(cell));
       return { x: sample.x, cells };
     });
@@ -453,7 +570,7 @@ export function SpectralHistoryPanel() {
     ctx.fillStyle = '#858595';
     const fallback = mode === 'forever_zscore' && (!baseline || baseline.stats.n.every((n) => n < 2));
     ctx.fillText(`${MODE_LABELS[mode]}${fallback ? ' (using causal fallback)' : ''}`, PAD_L + 4, 12);
-  }, [binned, visibleFreqs, minFreq, maxFreq, binHz, width, mode, baseline, logMin, logMax, spectrogramWindowSec]);
+  }, [binned, visibleFreqs, minFreq, maxFreq, binHz, width, mode, baseline, spectrogramLogMin, spectrogramLogMax, spectrogramWindowSec]);
 
   const settings = (
     <>
@@ -491,6 +608,19 @@ export function SpectralHistoryPanel() {
           <option value="log_power">Log power</option>
           <option value="absolute_power">Absolute power</option>
         </select>
+      </label>
+      <Slider
+        label="Frequency cursor"
+        min={minFreq}
+        max={maxFreq}
+        step={0.1}
+        value={Math.max(minFreq, Math.min(maxFreq, cursorHz))}
+        onChange={setCursorHz}
+        format={(v) => `${v.toFixed(1)} Hz`}
+      />
+      <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.85em', cursor: 'pointer' }}>
+        <input type="checkbox" checked={showBandOverlays} onChange={(event) => setShowBandOverlays(event.target.checked)} />
+        <span style={{ color: 'var(--muted)' }}>Show selected bands</span>
       </label>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
         <label style={{ display: 'flex', flexDirection: 'column', gap: 3, fontSize: '0.85em' }}>
@@ -534,13 +664,41 @@ export function SpectralHistoryPanel() {
           ))}
         </select>
       </label>
+      {mode === 'log_power' && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 3, fontSize: '0.85em' }}>
+            <span style={{ color: 'var(--muted)' }}>Spec color low</span>
+            <input
+              type="number"
+              value={spectrogramLogMin}
+              min={-12}
+              max={spectrogramLogMax - 0.5}
+              step={0.5}
+              onChange={(event) => setSpectrogramLogMin(Number(event.target.value))}
+              style={{ background: '#1a1a28', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 3, padding: '4px 6px', fontFamily: 'inherit', fontSize: 12, minWidth: 0 }}
+            />
+          </label>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 3, fontSize: '0.85em' }}>
+            <span style={{ color: 'var(--muted)' }}>Spec color high</span>
+            <input
+              type="number"
+              value={spectrogramLogMax}
+              min={spectrogramLogMin + 0.5}
+              max={6}
+              step={0.5}
+              onChange={(event) => setSpectrogramLogMax(Number(event.target.value))}
+              style={{ background: '#1a1a28', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 3, padding: '4px 6px', fontFamily: 'inherit', fontSize: 12, minWidth: 0 }}
+            />
+          </label>
+        </div>
+      )}
     </>
   );
 
   return (
     <ComponentSettings settings={settings}>
       <div ref={size.wrapRef} style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <canvas ref={psdCanvasRef} style={{ display: 'block', width: '100%' }} />
+        <canvas ref={psdCanvasRef} style={{ display: 'block', width: '100%', cursor: 'crosshair' }} />
         <canvas ref={specCanvasRef} style={{ display: 'block', width: '100%' }} />
       </div>
     </ComponentSettings>

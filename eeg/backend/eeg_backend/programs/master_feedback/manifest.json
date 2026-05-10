@@ -1,0 +1,43 @@
+{
+  "id": "master_feedback",
+  "title": "Master Feedback",
+  "description": "Configurable band-condition neurofeedback with presets for the existing programs.",
+  "version": "1.0",
+  "runtime": "runtime:MasterFeedbackRuntime",
+  "frontend_view": "master_feedback/view",
+  "required_bands": ["Delta", "Theta", "Alpha", "SMR", "Beta", "Hi-Beta"],
+  "audio_scenes": ["main"],
+  "settings_schema": {
+    "preset": {
+      "type": "enum",
+      "default": "alpha_feedback",
+      "options": ["alpha_feedback", "alpha_theta_beta", "alpha_theta_feedback", "smr_feedback", "debug", "custom"],
+      "label": "Preset",
+      "description": "Starting band-condition set to load into the master program."
+    },
+    "threshold_window_sec": {
+      "type": "number",
+      "default": 60,
+      "min": 1,
+      "max": 300,
+      "step": 1,
+      "label": "Threshold window",
+      "description": "Rolling window used to recompute adaptive thresholds."
+    },
+    "clarity_at_threshold": {
+      "type": "number",
+      "default": 0.5,
+      "min": 0.05,
+      "max": 0.95,
+      "step": 0.05,
+      "label": "Threshold drive",
+      "description": "Reserved threshold drive setting shared with older reward/inhibit runtimes."
+    },
+    "bands_json": {
+      "type": "string",
+      "default": "[{\"id\":\"alpha\",\"label\":\"Alpha\",\"lo_hz\":8,\"hi_hz\":12,\"role\":\"reward\",\"direction\":\"above\",\"target_pct\":65,\"dwell_sec\":0,\"feature\":\"log_power\"},{\"id\":\"delta\",\"label\":\"Delta\",\"lo_hz\":0.5,\"hi_hz\":4,\"role\":\"inhibit_sfx\",\"direction\":\"above\",\"target_pct\":15,\"dwell_sec\":2,\"feature\":\"log_power\"},{\"id\":\"beta\",\"label\":\"Beta+\",\"lo_hz\":15,\"hi_hz\":30,\"role\":\"inhibit_sfx\",\"direction\":\"above\",\"target_pct\":15,\"dwell_sec\":2,\"feature\":\"log_power\"}]",
+      "label": "Band definitions",
+      "description": "JSON-encoded editable band condition definitions."
+    }
+  }
+}
