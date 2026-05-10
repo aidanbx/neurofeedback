@@ -7,6 +7,7 @@ from eeg_backend.contracts import BandFeature, MetricsSnapshot
 from eeg_backend.programs.alpha_feedback.runtime import AlphaFeedbackRuntime
 from eeg_backend.programs.alpha_theta_beta.runtime import AlphaThetaBetaRuntime
 from eeg_backend.programs.alpha_theta_feedback.runtime import AlphaThetaFeedbackRuntime
+from eeg_backend.programs.master_feedback.runtime import MasterFeedbackRuntime
 from eeg_backend.programs.smr_feedback.runtime import SMRFeedbackRuntime
 
 
@@ -25,7 +26,8 @@ def make_band(smoothed: float, ready: bool = True, n: int = 50) -> BandFeature:
     )
 
 
-def make_snap(alpha=0.5, smr=-0.1, theta=-0.3, beta=-0.3, hi_beta=-0.5, delta=0.0, quality=85.0, artifact=0.05) -> MetricsSnapshot:
+def make_snap(alpha=0.5, smr=-0.1, theta=-0.3, beta=-0.3, hi_beta=-0.5, delta=0.0, quality=85.0, artifact=0.05, psd_override=None) -> MetricsSnapshot:
+    psd_pairs = psd_override or [(1.0, 0.1), (5.0, 0.5), (10.0, 1.0)]
     return MetricsSnapshot(
         elapsed_sec=10.0,
         quality_score=quality,
@@ -34,10 +36,10 @@ def make_snap(alpha=0.5, smr=-0.1, theta=-0.3, beta=-0.3, hi_beta=-0.5, delta=0.
         common_mode_corr=0.1,
         slow_wave_ratio=0.2,
         line_noise_ratio=0.05,
-        psd_freqs=[1.0, 5.0, 10.0],
-        psd_values=[0.1, 0.5, 1.0],
-        raw_psd_freqs=[1.0, 5.0, 10.0],
-        raw_psd_values=[0.1, 0.5, 1.0],
+        psd_freqs=[freq for freq, _ in psd_pairs],
+        psd_values=[value for _, value in psd_pairs],
+        raw_psd_freqs=[freq for freq, _ in psd_pairs],
+        raw_psd_values=[value for _, value in psd_pairs],
         live_trace_t=[0.0, 0.1, 0.2],
         live_trace_y=[1.0, 2.0, 3.0],
         bands={
@@ -161,6 +163,55 @@ def test_smr_feedback_inhibits_on_hi_beta():
     assert out.payload["inhibit_active"] is True
 
 
+def test_master_feedback_loads_existing_program_presets():
+    rt = MasterFeedbackRuntime()
+    for preset in ("alpha_feedback", "alpha_theta_beta", "alpha_theta_feedback", "smr_feedback", "debug"):
+        rt.set_params({"preset": preset, "threshold_window_sec": 1})
+        out = rt.tick(make_snap(), 1.2)
+        assert out.program_id == "master_feedback"
+        assert out.payload["preset"] == preset
+        assert len(out.payload["bands"]) > 0
+        assert set(out.payload["drives"]) == {band["id"] for band in out.payload["bands"]}
+
+
+def test_master_feedback_accepts_custom_band_json():
+    rt = MasterFeedbackRuntime()
+    rt.set_params({
+        "preset": "custom",
+        "bands_json": '[{"id":"custom_alpha","label":"10-13 Hz","lo_hz":10,"hi_hz":13,"role":"reward","direction":"above","target_pct":50,"feature":"log_power"}]',
+    })
+    out = rt.tick(make_snap(), 5.0)
+    assert out.payload["preset"] == "custom"
+    assert out.payload["bands"][0]["id"] == "custom_alpha"
+    assert out.payload["bands"][0]["lo_hz"] == 10.0
+
+
+def test_master_feedback_preset_change_overrides_stale_bands_json():
+    rt = MasterFeedbackRuntime()
+    stale = rt.get_params()["bands_json"]
+    rt.set_params({"preset": "alpha_theta_beta", "bands_json": stale})
+    out = rt.tick(make_snap(), 5.0)
+    assert out.payload["preset"] == "alpha_theta_beta"
+    assert [band["id"] for band in out.payload["bands"]] == ["alpha", "theta", "beta"]
+    assert all(band["role"] == "reward" for band in out.payload["bands"])
+
+
+def test_master_feedback_hold_requires_full_window():
+    rt = MasterFeedbackRuntime()
+    rt.set_params({
+        "preset": "custom",
+        "threshold_window_sec": 1,
+        "bands_json": '[{"id":"slow","label":"Slow","lo_hz":0.5,"hi_hz":4,"role":"inhibit_sfx","direction":"above","target_pct":50,"dwell_sec":2,"feature":"log_power"}]',
+    })
+    for i in range(6):
+        rt.tick(make_snap(delta=0.0, psd_override=[(1.0, 1.0)]), i * 0.2)
+    early = rt.tick(make_snap(delta=2.0, psd_override=[(1.0, 10.0)]), 1.2)
+    assert early.payload["bands"][0]["active"] is False
+    for elapsed in (1.6, 2.0, 2.4, 2.8, 3.2):
+        late = rt.tick(make_snap(delta=2.0, psd_override=[(1.0, 10.0)]), elapsed)
+    assert late.payload["bands"][0]["active"] is True
+
+
 if __name__ == "__main__":
     test_alpha_feedback_starts_immediately()
     test_alpha_feedback_rolling_after_samples()
@@ -173,4 +224,8 @@ if __name__ == "__main__":
     test_smr_feedback_starts_and_produces_clarity()
     test_smr_feedback_rewards_immediately_when_conditions_match()
     test_smr_feedback_inhibits_on_hi_beta()
+    test_master_feedback_loads_existing_program_presets()
+    test_master_feedback_accepts_custom_band_json()
+    test_master_feedback_preset_change_overrides_stale_bands_json()
+    test_master_feedback_hold_requires_full_window()
     print("All tests passed")

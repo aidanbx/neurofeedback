@@ -76,5 +76,6 @@ export const api = {
   deleteSessions:     (ids: string[]) =>
     request<{ ok: boolean; deleted: string[]; errors: string[] }>('/session/delete', { method: 'POST', body: JSON.stringify({ ids }) }),
   getAudioTracks:     () => request<{ name: string; filename: string; url: string }[]>('/audio-tracks'),
+  getAudioEffects:    () => request<{ name: string; filename: string; url: string }[]>('/audio-effects'),
   getPrograms:        () => request<ProgramManifest[]>('/programs'),
 };
