@@ -31,6 +31,7 @@ interface Props<T extends Point> {
   clarityDefs: BandDef<T>[];
   barThresholdDefs?: Array<{ band: string; color?: string; value: (point: T) => number }>;
   barInitialMode?: BandMetricMode;
+  lockBarMode?: boolean;
   chartWindowSec: number;
   onChartWindowSecChange: (value: number) => void;
   showThresholds: boolean;
@@ -47,6 +48,7 @@ export function NeurofeedbackCharts<T extends Point>({
   clarityDefs,
   barThresholdDefs = [],
   barInitialMode = 'log_absolute',
+  lockBarMode = false,
   chartWindowSec,
   onChartWindowSecChange,
   showThresholds,
@@ -136,6 +138,7 @@ export function NeurofeedbackCharts<T extends Point>({
         showLiveChart={false}
         combineHiBetaForBeta
         pauseWhenNotRecording
+        lockMode={lockBarMode}
       />
     </div>
   );

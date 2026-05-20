@@ -225,13 +225,13 @@ export default function AlphaFeedbackView() {
         </Section>
       )}
 
-      <SessionControls programId="alpha_feedback" programTitle="Alpha Feedback" onStarted={handleTrainingStarted} onStopped={handleTrainingStopped} />
+      <SessionControls programId="alpha_feedback" programTitle="Alpha" onStarted={handleTrainingStarted} onStopped={handleTrainingStopped} />
     </>
   );
 
   return (
     <ProgramLayout
-      title="Alpha Feedback"
+      title="Alpha"
       mode={mode}
       statusText={programOutput?.status_text}
       calibrating={false}

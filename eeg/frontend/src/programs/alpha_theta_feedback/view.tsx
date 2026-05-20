@@ -543,13 +543,13 @@ export default function AlphaThetaFeedbackView() {
         </Section>
       )}
 
-      <SessionControls programId={PROGRAM_ID} programTitle="Alpha Theta Feedback" onStarted={handleTrainingStarted} onStopped={handleTrainingStopped} />
+      <SessionControls programId={PROGRAM_ID} programTitle="Alpha-Theta" onStarted={handleTrainingStarted} onStopped={handleTrainingStopped} />
     </>
   );
 
   return (
     <ProgramLayout
-      title="Alpha Theta Feedback"
+      title="Alpha-Theta"
       mode={mode}
       statusText={programOutput?.status_text}
       calibrating={false}

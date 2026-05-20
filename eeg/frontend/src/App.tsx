@@ -61,7 +61,7 @@ export default function App() {
         useDeviceStore.getState().setAppState(s as AppState);
         if (programsRef.current.length === 0) {
           const progs = await api.getPrograms();
-          setPrograms(progs as ProgramManifest[]);
+          setPrograms((progs as ProgramManifest[]).filter((program) => program.id !== 'debug'));
         }
       } catch {}
     };

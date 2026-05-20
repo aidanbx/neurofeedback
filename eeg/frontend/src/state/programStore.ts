@@ -9,7 +9,7 @@ interface ProgramStore {
 }
 
 export const useProgramStore = create<ProgramStore>((set) => ({
-  activeProgramId: 'debug',
+  activeProgramId: 'master_feedback',
   programOutput: null,
   setActiveProgramId: (activeProgramId) => set({ activeProgramId }),
   setOutput: (programOutput) => set({ programOutput }),

@@ -1,4 +1,6 @@
 """Unit tests for program runtimes with synthetic MetricsSnapshot input."""
+import json
+import math
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -13,7 +15,7 @@ from eeg_backend.programs.smr_feedback.runtime import SMRFeedbackRuntime
 
 def make_band(smoothed: float, ready: bool = True, n: int = 50) -> BandFeature:
     return BandFeature(
-        absolute=0.5,
+        absolute=float(math.exp(smoothed)),
         relative_1_30=20.0,
         relative_4_30=20.0,
         log_absolute=smoothed,
@@ -174,6 +176,30 @@ def test_master_feedback_loads_existing_program_presets():
         assert set(out.payload["drives"]) == {band["id"] for band in out.payload["bands"]}
 
 
+def test_master_feedback_defaults_to_alpha_theta():
+    rt = MasterFeedbackRuntime()
+    params = rt.get_params()
+    bands = {band["id"]: band for band in out_bands(params["bands_json"])}
+    assert params["preset"] == "alpha_theta_feedback"
+    assert list(bands) == ["alpha", "theta", "slow", "beta"]
+    assert bands["alpha"]["target_pct"] == 65.0
+    assert bands["theta"]["target_pct"] == 65.0
+    assert bands["alpha"]["feature"] == "log_power"
+    assert bands["theta"]["feature"] == "log_power"
+    assert bands["slow"]["role"] == "inhibit"
+    assert bands["slow"]["target_pct"] == 15.0
+    assert bands["slow"]["dwell_sec"] == 0.5
+    assert bands["slow"]["feature"] == "log_power"
+    assert bands["beta"]["role"] == "inhibit"
+    assert bands["beta"]["target_pct"] == 15.0
+    assert bands["beta"]["dwell_sec"] == 0.5
+    assert bands["beta"]["feature"] == "log_power"
+
+
+def out_bands(bands_json: str):
+    return json.loads(bands_json)
+
+
 def test_master_feedback_accepts_custom_band_json():
     rt = MasterFeedbackRuntime()
     rt.set_params({
@@ -184,6 +210,34 @@ def test_master_feedback_accepts_custom_band_json():
     assert out.payload["preset"] == "custom"
     assert out.payload["bands"][0]["id"] == "custom_alpha"
     assert out.payload["bands"][0]["lo_hz"] == 10.0
+    assert out.payload["bands"][0]["feature"] == "log_power"
+
+
+def test_master_feedback_coerces_custom_features_to_log_power():
+    rt = MasterFeedbackRuntime()
+    rt.set_params({
+        "preset": "custom",
+        "bands_json": '[{"id":"alpha","label":"Alpha","lo_hz":8,"hi_hz":12,"role":"reward","direction":"above","target_pct":65,"feature":"smoothed"},{"id":"theta","label":"Theta","lo_hz":4,"hi_hz":8,"role":"reward","direction":"above","target_pct":65,"feature":"absolute_power"}]',
+    })
+    out = rt.tick(make_snap(), 5.0)
+    assert [band["feature"] for band in out.payload["bands"]] == ["log_power", "log_power"]
+
+
+def test_master_feedback_starting_threshold_uses_all_available_history():
+    rt = MasterFeedbackRuntime()
+    rt.set_params({
+        "preset": "custom",
+        "threshold_window_sec": 60,
+        "bands_json": '[{"id":"alpha","label":"Alpha","lo_hz":8,"hi_hz":12,"role":"reward","direction":"above","target_pct":25,"feature":"log_power"}]',
+    })
+    for elapsed in (0.0, 1.0, 2.0):
+        rt.tick(make_snap(alpha=0.0), elapsed)
+    out = rt.tick(make_snap(alpha=10.0), 10.0)
+    band = out.payload["bands"][0]
+    assert out.payload["mode"] == "starting"
+    assert band["threshold"] > 0.0
+    assert band["threshold"] < band["value"]
+    assert band["drive"] > 0.0
 
 
 def test_master_feedback_preset_change_overrides_stale_bands_json():
@@ -212,6 +266,22 @@ def test_master_feedback_hold_requires_full_window():
     assert late.payload["bands"][0]["active"] is True
 
 
+def test_master_feedback_alpha_theta_beta_inhibit_uses_dwell_timer():
+    rt = MasterFeedbackRuntime()
+    rt.set_params({"preset": "alpha_theta_feedback", "threshold_window_sec": 1})
+    for i in range(6):
+        rt.tick(make_snap(alpha=0.8, theta=0.6, beta=1.0, hi_beta=0.9), i * 0.2)
+    reset = rt.tick(make_snap(alpha=0.8, theta=0.6, beta=-2.0, hi_beta=-2.1), 1.2)
+    assert reset.payload["gates"]["beta"] is False
+    early = rt.tick(make_snap(alpha=0.8, theta=0.6, beta=1.0, hi_beta=0.9), 1.4)
+    assert early.payload["gates"]["beta"] is False
+    late = early
+    for elapsed in (1.6, 1.8, 2.0):
+        late = rt.tick(make_snap(alpha=0.8, theta=0.6, beta=1.0, hi_beta=0.9), elapsed)
+    assert late.payload["gates"]["beta"] is True
+    assert late.payload["inhibit_active"] is True
+
+
 if __name__ == "__main__":
     test_alpha_feedback_starts_immediately()
     test_alpha_feedback_rolling_after_samples()
@@ -225,7 +295,11 @@ if __name__ == "__main__":
     test_smr_feedback_rewards_immediately_when_conditions_match()
     test_smr_feedback_inhibits_on_hi_beta()
     test_master_feedback_loads_existing_program_presets()
+    test_master_feedback_defaults_to_alpha_theta()
     test_master_feedback_accepts_custom_band_json()
+    test_master_feedback_coerces_custom_features_to_log_power()
+    test_master_feedback_starting_threshold_uses_all_available_history()
     test_master_feedback_preset_change_overrides_stale_bands_json()
     test_master_feedback_hold_requires_full_window()
+    test_master_feedback_alpha_theta_beta_inhibit_uses_dwell_timer()
     print("All tests passed")

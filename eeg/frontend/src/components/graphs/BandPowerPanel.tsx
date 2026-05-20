@@ -11,6 +11,7 @@ type Pt = { x: number; y: number };
 interface Props {
   initialMode?: BandMetricMode;
   timelineHeight?: number;
+  lockMode?: boolean;
 }
 
 const DISPLAY_BANDS = ['Delta', 'Theta', 'Alpha', 'SMR', 'Beta', 'Hi-Beta'];
@@ -41,7 +42,7 @@ function rangeFor(mode: BandMetricMode, points: Pt[]) {
   return { yMin: lo - pad, yMax: hi + pad, zeroLine: false };
 }
 
-export function BandPowerPanel({ initialMode = 'relative_1_30', timelineHeight = 220 }: Props) {
+export function BandPowerPanel({ initialMode = 'relative_1_30', timelineHeight = 220, lockMode = false }: Props) {
   const metricsBatch = useDeviceStore((s) => s.metricsBatch);
   const metrics      = useDeviceStore((s) => s.metrics);
 
@@ -127,19 +128,21 @@ export function BandPowerPanel({ initialMode = 'relative_1_30', timelineHeight =
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {!lockMode && (
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(160px, 220px) 1fr', gap: 8, alignItems: 'start' }}>
-        <label style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-          <span style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--muted)' }}>Measure</span>
-          <select value={mode} onChange={(e) => setMode(e.target.value as BandMetricMode)}>
-            {BAND_METRIC_OPTIONS.map(([key, item]) => (
-              <option key={key} value={key}>{item.label}</option>
-            ))}
-          </select>
-        </label>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <span style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--muted)' }}>Measure</span>
+            <select value={mode} onChange={(e) => setMode(e.target.value as BandMetricMode)}>
+              {BAND_METRIC_OPTIONS.map(([key, item]) => (
+                <option key={key} value={key}>{item.label}</option>
+              ))}
+            </select>
+          </label>
         <div style={{ color: 'var(--muted)', fontSize: 11, lineHeight: 1.5 }}>
           {info.description} {info.unit && <span>Unit: {info.unit}.</span>}
         </div>
       </div>
+      )}
 
       {metrics && (
         <ComponentSettings settings={barsSettings}>

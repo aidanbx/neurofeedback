@@ -31,6 +31,7 @@ async def connect_toggle():
 @router.post("/test-mode")
 async def toggle_test_mode(body: TestModeBody):
     from ...sessions.store import find_session_dir, SESSIONS
+    _app.ble.request_disconnect("Stopping BLE for test mode…")
     csv_path = None
     if body.session_id:
         d = find_session_dir(body.session_id)
