@@ -281,7 +281,7 @@ export default function AlphaThetaBetaView() {
         </Section>
       )}
 
-      <SessionControls programId="alpha_theta_beta" programTitle="Alpha-Theta-Beta Feedback" onStarted={handleTrainingStarted} onStopped={handleTrainingStopped} />
+      <SessionControls programId="alpha_theta_beta" programTitle="Alpha-Theta-Beta" onStarted={handleTrainingStarted} onStopped={handleTrainingStopped} />
     </>
   );
 

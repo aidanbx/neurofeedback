@@ -14,16 +14,19 @@ import { Panel } from '../../components/layout/Panel';
 import { SpectralHistoryPanel, type SpectralBandOverlay } from '../../components/graphs/SpectralHistoryPanel';
 import { NeurofeedbackCharts } from '../../components/graphs/NeurofeedbackCharts';
 import { InhibitStateTimeline } from '../../components/graphs/InhibitStateTimeline';
+import { TimelineChart } from '../../components/graphs/TimelineChart';
+import { BandPowerPanel } from '../../components/graphs/BandPowerPanel';
 import { Waveform } from '../../components/graphs/Waveform';
 import { ProgramLayout } from '../ProgramLayout';
 
 const PROGRAM_ID = 'master_feedback';
 const BROWN_NOISE_URL = '/audio/tracks/Brown%20Noise.mp3';
 const ALPHA_WAVES_URL = '/audio/tracks/Alpha%20Waves.mp3';
+const CREEK_URL = '/audio/tracks/Creek.mp3';
 
 type Role = 'reward' | 'inhibit' | 'inhibit_sfx' | 'observe';
 type Direction = 'above' | 'below';
-type Feature = 'log_power' | 'absolute_power' | 'smoothed';
+type Feature = 'log_power';
 
 interface BandDefinition {
   id: string;
@@ -65,11 +68,13 @@ interface HistoryPoint {
   bands: Record<string, BandTelemetry>;
 }
 
+type Pt = { x: number; y: number };
+
 const PRESET_LABELS: Record<string, string> = {
-  alpha_feedback: 'Alpha Feedback',
+  alpha_feedback: 'Alpha',
   alpha_theta_beta: 'Alpha-Theta-Beta',
-  alpha_theta_feedback: 'Alpha Theta Feedback',
-  smr_feedback: 'SMR Feedback',
+  alpha_theta_feedback: 'Alpha-Theta',
+  smr_feedback: 'SMR',
   debug: 'Debug',
   custom: 'Custom',
 };
@@ -114,6 +119,17 @@ function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
 }
 
+function qualColor(v: number, good: number, fair: number, invert = false) {
+  if (invert) {
+    if (v <= good) return 'var(--good)';
+    if (v <= fair) return 'var(--fair)';
+    return 'var(--poor)';
+  }
+  if (v >= good) return 'var(--good)';
+  if (v >= fair) return 'var(--fair)';
+  return 'var(--poor)';
+}
+
 function rewardCurveDrive(value: number, spread: number) {
   const centered = clamp(value, 0, 1) - 0.5;
   return clamp(1 / (1 + Math.exp(-(centered * 8) / Math.max(0.1, spread))), 0, 1);
@@ -125,12 +141,10 @@ function FieldLabel({ children }: { children: string }) {
 
 function RewardCurvePreview({
   spread,
-  inputDrive,
-  outputDrive,
+  markers,
 }: {
   spread: number;
-  inputDrive: number;
-  outputDrive: number;
+  markers: { id: string; label: string; color: string; inputDrive: number; outputDrive: number }[];
 }) {
   const width = 220;
   const height = 92;
@@ -145,8 +159,6 @@ function RewardCurvePreview({
     };
   });
   const path = samples.map((point, i) => `${i === 0 ? 'M' : 'L'} ${point.x.toFixed(1)} ${point.y.toFixed(1)}`).join(' ');
-  const markerX = pad + clamp(inputDrive, 0, 1) * usableW;
-  const markerY = pad + (1 - clamp(outputDrive, 0, 1)) * usableH;
 
   return (
     <svg width="100%" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Reward audio curve" style={{ display: 'block' }}>
@@ -154,7 +166,24 @@ function RewardCurvePreview({
       <line x1={pad} x2={pad} y1={pad} y2={height - pad} stroke="rgba(255,255,255,0.18)" />
       <line x1={width / 2} x2={width / 2} y1={pad} y2={height - pad} stroke="rgba(255,255,255,0.24)" strokeDasharray="3 3" />
       <path d={path} fill="none" stroke="#d9dde8" strokeWidth="2" />
-      <circle cx={markerX} cy={markerY} r="4" fill="#ff9f43" stroke="rgba(0,0,0,0.38)" strokeWidth="1" />
+      {markers.map((marker, index) => {
+        const markerX = pad + clamp(marker.inputDrive, 0, 1) * usableW;
+        const markerY = pad + (1 - clamp(marker.outputDrive, 0, 1)) * usableH;
+        return (
+          <circle
+            key={marker.id}
+            cx={markerX}
+            cy={markerY}
+            r={4 + Math.min(2, marker.outputDrive * 2)}
+            fill={marker.color}
+            stroke="rgba(0,0,0,0.48)"
+            strokeWidth="1"
+            opacity={0.45 + marker.outputDrive * 0.55}
+          >
+            <title>{`${marker.label}: ${Math.round(marker.outputDrive * 100)}%`}</title>
+          </circle>
+        );
+      })}
       <text x={pad} y={height - 3} fill="rgba(255,255,255,0.42)" fontSize="9" fontFamily="ui-monospace, monospace">low</text>
       <text x={width / 2} y={height - 3} fill="rgba(255,255,255,0.42)" fontSize="9" fontFamily="ui-monospace, monospace" textAnchor="middle">threshold</text>
       <text x={width - pad} y={height - 3} fill="rgba(255,255,255,0.42)" fontSize="9" fontFamily="ui-monospace, monospace" textAnchor="end">high</text>
@@ -166,7 +195,7 @@ const BAND_PRESETS: BandDefinition[] = [
   { id: 'alpha', label: 'Alpha', lo_hz: 8, hi_hz: 12, role: 'reward', direction: 'above', target_pct: 65, dwell_sec: 0, feature: 'log_power' },
   { id: 'theta', label: 'Theta', lo_hz: 4, hi_hz: 8, role: 'inhibit', direction: 'above', target_pct: 15, dwell_sec: 0.5, feature: 'log_power' },
   { id: 'delta', label: 'Delta', lo_hz: 0.5, hi_hz: 4, role: 'inhibit_sfx', direction: 'above', target_pct: 15, dwell_sec: 2, feature: 'log_power' },
-  { id: 'smr', label: 'SMR', lo_hz: 12, hi_hz: 15, role: 'reward', direction: 'above', target_pct: 65, dwell_sec: 0, feature: 'smoothed' },
+  { id: 'smr', label: 'SMR', lo_hz: 12, hi_hz: 15, role: 'reward', direction: 'above', target_pct: 65, dwell_sec: 0, feature: 'log_power' },
   { id: 'beta', label: 'Beta+', lo_hz: 15, hi_hz: 30, role: 'inhibit_sfx', direction: 'above', target_pct: 15, dwell_sec: 2, feature: 'log_power' },
 ];
 
@@ -234,6 +263,45 @@ function DraftNumberInput({
   );
 }
 
+function DraftTextInput({
+  value,
+  fallback,
+  onCommit,
+}: {
+  value: string;
+  fallback: string;
+  onCommit: (value: string) => void;
+}) {
+  const [draft, setDraft] = useState(value);
+
+  useEffect(() => {
+    setDraft(value);
+  }, [value]);
+
+  const commit = () => {
+    const next = draft.trim() || fallback;
+    setDraft(next);
+    onCommit(next);
+  };
+
+  return (
+    <input
+      value={draft}
+      onChange={(event) => setDraft(event.target.value)}
+      onBlur={commit}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter') {
+          event.currentTarget.blur();
+        } else if (event.key === 'Escape') {
+          setDraft(value);
+          event.currentTarget.blur();
+        }
+      }}
+      style={inputStyle}
+    />
+  );
+}
+
 function BandEditor({
   bands,
   onChange,
@@ -260,10 +328,10 @@ function BandEditor({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       {bands.map((band, index) => (
-        <div key={`${band.id}-${index}`} style={{ display: 'grid', gridTemplateColumns: 'minmax(120px, 1.2fr) repeat(2, minmax(54px, 0.5fr)) minmax(102px, 0.8fr) minmax(82px, 0.7fr) minmax(104px, 0.8fr) minmax(68px, 0.55fr) minmax(124px, 0.95fr) 32px', gap: 6, alignItems: 'end', padding: 8, background: '#10121b', border: '1px solid var(--border)', borderRadius: 6 }}>
+        <div key={index} style={{ display: 'grid', gridTemplateColumns: 'minmax(120px, 1.2fr) repeat(2, minmax(54px, 0.5fr)) minmax(102px, 0.8fr) minmax(82px, 0.7fr) minmax(104px, 0.8fr) minmax(68px, 0.55fr) 32px', gap: 6, alignItems: 'end', padding: 8, background: '#10121b', border: '1px solid var(--border)', borderRadius: 6 }}>
           <label style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
             <FieldLabel>Name</FieldLabel>
-            <input value={band.label} onChange={(event) => update(index, { label: event.target.value, id: event.target.value.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || band.id })} style={inputStyle} />
+            <DraftTextInput value={band.label} fallback={`Band ${index + 1}`} onCommit={(value) => update(index, { label: value })} />
           </label>
           <label style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
             <FieldLabel>Low</FieldLabel>
@@ -296,14 +364,6 @@ function BandEditor({
           <label style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
             <FieldLabel>Hold s</FieldLabel>
             <DraftNumberInput min={0} max={10} step={0.25} value={band.dwell_sec ?? 0} onCommit={(value) => update(index, { dwell_sec: value })} />
-          </label>
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-            <FieldLabel>Feature</FieldLabel>
-            <select value={band.feature} onChange={(event) => update(index, { feature: event.target.value as Feature })} style={inputStyle}>
-              <option value="log_power">Log power</option>
-              <option value="absolute_power">Abs power</option>
-              <option value="smoothed">Asym smoothed</option>
-            </select>
           </label>
           <button type="button" className="btn" onClick={() => remove(index)} title="Remove band" aria-label={`Remove ${band.label}`} style={{ height: 28, padding: 0 }}>x</button>
         </div>
@@ -339,7 +399,7 @@ function namedBarBand(label: string) {
 }
 
 function trackUrlFor(urls: Record<string, string>, band: BandDefinition | BandTelemetry) {
-  return urls[band.id] ?? (band.label.toLowerCase().includes('theta') ? BROWN_NOISE_URL : ALPHA_WAVES_URL);
+  return urls[band.id] ?? (band.label.toLowerCase().includes('theta') ? CREEK_URL : ALPHA_WAVES_URL);
 }
 
 function effectUrlFor(urls: Record<string, string>, band: BandDefinition | BandTelemetry, edge: 'in' | 'out') {
@@ -353,6 +413,54 @@ function effectUrlFor(urls: Record<string, string>, band: BandDefinition | BandT
     return edge === 'in' ? '/audio/effects/Beep%201.wav' : '/audio/effects/Beep%202.wav';
   }
   return edge === 'in' ? '/audio/effects/soft-chime-up.wav' : '/audio/effects/soft-chime-down.wav';
+}
+
+function ContactQualityPanel() {
+  const metrics = useDeviceStore((s) => s.metrics);
+  const metricsBatch = useDeviceStore((s) => s.metricsBatch);
+  const appState = useDeviceStore((s) => s.appState);
+  const historyRef = useRef<Pt[]>([]);
+  const lastXRef = useRef(0);
+  const [history, setHistory] = useState<Pt[]>([]);
+
+  useEffect(() => {
+    if (metricsBatch.length === 0) return;
+    for (const snap of metricsBatch) {
+      const x = snap.elapsed_sec > lastXRef.current ? snap.elapsed_sec : lastXRef.current + 0.25;
+      lastXRef.current = x;
+      historyRef.current = [...historyRef.current.slice(-420), { x, y: snap.quality_score }];
+    }
+    setHistory([...historyRef.current]);
+  }, [metricsBatch]);
+
+  if (!metrics) {
+    return <div style={{ color: 'var(--muted)', fontSize: 12 }}>Waiting for contact quality...</div>;
+  }
+
+  const commonModeCorr = metrics.common_mode_corr ?? 0;
+  const slowWaveRatio = metrics.slow_wave_ratio ?? 0;
+  const lineNoiseRatio = metrics.line_noise_ratio ?? 0;
+  const stats = [
+    { label: 'Quality score', value: `${metrics.quality_score.toFixed(0)}`, color: qualColor(metrics.quality_score, 70, 40) },
+    { label: 'Artifact frac', value: `${(metrics.artifact_fraction * 100).toFixed(0)}%`, color: qualColor(metrics.artifact_fraction, 0.05, 0.2, true) },
+    { label: 'Common corr', value: `${(commonModeCorr * 100).toFixed(0)}%`, color: qualColor(commonModeCorr, 0.25, 0.55, true) },
+    { label: 'Slow waves', value: `${(slowWaveRatio * 100).toFixed(0)}%`, color: qualColor(slowWaveRatio, 0.25, 0.55, true) },
+    { label: '60Hz noise', value: `${(lineNoiseRatio * 100).toFixed(0)}%`, color: qualColor(lineNoiseRatio, 0.08, 0.25, true) },
+    { label: 'Notch', value: appState?.notch_60hz ? 'on' : 'off', color: appState?.notch_60hz ? 'var(--fair)' : 'var(--good)' },
+  ];
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <StatsGrid stats={stats} />
+      <TimelineChart
+        series={[{ label: 'Quality', color: '#88aaff', points: history, threshold: 55 }]}
+        height={160}
+        windowSec={120}
+        yMin={0}
+        yMax={100}
+      />
+    </div>
+  );
 }
 
 const inputStyle = {
@@ -380,7 +488,7 @@ export default function MasterFeedbackView() {
   const [params, setParams] = useState<Record<string, unknown>>({});
   const [bands, setBands] = useState<BandDefinition[]>([]);
   const [baseUrl, setBaseUrl] = useState(BROWN_NOISE_URL);
-  const [activeUrl, setActiveUrl] = useState(ALPHA_WAVES_URL);
+  const [activeUrl] = useState('silence');
   const [bandTrackUrls, setBandTrackUrls] = useState<Record<string, string>>({});
   const [effectUrls, setEffectUrls] = useState<Record<string, string>>({});
   const [masterVol, setMasterVol] = useState(0.8);
@@ -400,7 +508,7 @@ export default function MasterFeedbackView() {
     .reduce((max, band) => Math.max(max, band.drive), 0);
   const curvedRewardDrive = rewardCurveDrive(rewardDrive, rewardSpread);
   const audioDrive = payload?.inhibit_active ? 0 : curvedRewardDrive;
-  const preset = String(params.preset ?? payload?.preset ?? 'alpha_feedback');
+  const preset = String(params.preset ?? payload?.preset ?? 'alpha_theta_feedback');
   const mode = payload?.mode ?? 'starting';
   const recentHistory = history.filter((point) => history.length === 0 || point.x >= history[history.length - 1].x - chartWindowSec);
   const playBands = bands.filter((band) => band.role === 'reward').slice(0, bandScenes.length);
@@ -505,17 +613,6 @@ export default function MasterFeedbackView() {
     ]);
   };
 
-  const stats = useMemo(() => {
-    if (!payload) return [];
-    return [
-      { label: 'Preset', value: PRESET_LABELS[preset] ?? preset },
-      { label: 'State', value: payload.inhibit_active ? 'INHIBIT' : payload.reward_active ? 'reward' : 'neutral', color: payload.inhibit_active ? 'var(--poor)' : payload.reward_active ? 'var(--good)' : 'var(--muted)' },
-      { label: 'Reward drive', value: `${Math.round(rewardDrive * 100)}%` },
-      { label: 'Audio drive', value: `${Math.round(audioDrive * 100)}%` },
-      { label: 'Quality', value: metrics ? `${metrics.quality_score.toFixed(0)} ${metrics.quality_label}` : '--' },
-    ];
-  }, [payload, preset, rewardDrive, audioDrive, metrics]);
-
   const chartBandDefs = telemetryBands.map((band, index) => ({
     key: band.id,
     label: band.label,
@@ -550,6 +647,17 @@ export default function MasterFeedbackView() {
     };
   });
   const barBands = [...new Set(telemetryBands.map((band) => namedBarBand(band.label)))];
+  const rewardCurveMarkers = playBands.map((band, index) => {
+    const telemetry = telemetryById[band.id];
+    const inputDrive = telemetry?.drive ?? 0;
+    return {
+      id: band.id,
+      label: band.label,
+      color: colorForBand(band, index),
+      inputDrive,
+      outputDrive: payload?.inhibit_active ? 0 : rewardCurveDrive(inputDrive, rewardSpread),
+    };
+  });
 
   const main = (
     <>
@@ -572,7 +680,8 @@ export default function MasterFeedbackView() {
           onShowThresholdsChange={setShowThresholds}
           emptyLabel="Waiting for feedback history..."
           barBands={barBands.length ? barBands : ['Alpha', 'Theta', 'Beta+']}
-          barInitialMode="smoothed"
+          barInitialMode="log_absolute"
+          lockBarMode
           barThresholdDefs={telemetryBands.map((band, index) => ({
             band: namedBarBand(band.label),
             color: colorForBand(band, index),
@@ -590,6 +699,14 @@ export default function MasterFeedbackView() {
           )}
           <SpectralHistoryPanel bandOverlays={overlays} />
         </div>
+      </Panel>
+
+      <Panel title="Contact Quality">
+        <ContactQualityPanel />
+      </Panel>
+
+      <Panel title="Band Powers">
+        <BandPowerPanel initialMode="log_absolute" timelineHeight={220} lockMode />
       </Panel>
     </>
   );
@@ -612,7 +729,6 @@ export default function MasterFeedbackView() {
 
       <Section title="Audio">
         <AudioTrackPlayer label="Base track" programId={PROGRAM_ID} eventPrefix="main.base_track" selectedUrl={baseUrl} onSelectedUrlChange={setBaseUrl} />
-        <AudioTrackPlayer label="Active track" programId={PROGRAM_ID} eventPrefix="main.active_track" selectedUrl={activeUrl} onSelectedUrlChange={setActiveUrl} />
         {playBands.map((band) => (
           <AudioTrackPlayer
             key={band.id}
@@ -645,21 +761,15 @@ export default function MasterFeedbackView() {
         ))}
         <LoggedSlider label="Master volume" min={0} max={100} step={1} value={Math.round(masterVol * 100)} onChange={(value) => setMasterVol(value / 100)} format={(v) => `${v}%`} programId={PROGRAM_ID} eventKey="main.master_volume_pct" />
         <LoggedSlider label="Base volume" min={0} max={100} step={1} value={Math.round(baseVol * 100)} onChange={(value) => setBaseVol(value / 100)} format={(v) => `${v}%`} programId={PROGRAM_ID} eventKey="main.base_volume_pct" />
-        <LoggedSlider label="Active volume" min={0} max={100} step={1} value={Math.round(activeVol * 100)} onChange={(value) => setActiveVol(value / 100)} format={(v) => `${v}%`} programId={PROGRAM_ID} eventKey="main.active_volume_pct" />
+        <LoggedSlider label="Reward volume" min={0} max={100} step={1} value={Math.round(activeVol * 100)} onChange={(value) => setActiveVol(value / 100)} format={(v) => `${v}%`} programId={PROGRAM_ID} eventKey="main.reward_volume_pct" />
         <Slider label="Fade time" min={0.2} max={4} step={0.1} value={fadeTime} onChange={setFadeTime} format={(v) => `${v.toFixed(1)}s`} />
         <Slider label="Reward curve" min={1} max={30} step={1} value={Math.round(rewardSpread * 10)} onChange={(v) => setRewardSpread(v / 10)} format={(v) => `${(v / 10).toFixed(1)}`} />
-        <RewardCurvePreview spread={rewardSpread} inputDrive={rewardDrive} outputDrive={curvedRewardDrive} />
+        <RewardCurvePreview spread={rewardSpread} markers={rewardCurveMarkers} />
       </Section>
-
-      {stats.length > 0 && (
-        <Section title="Stats" collapsible defaultOpen={false}>
-          <StatsGrid stats={stats} />
-        </Section>
-      )}
 
       <SessionControls
         programId={PROGRAM_ID}
-        programTitle="Master Feedback"
+        programTitle="Master"
         onStarted={async () => {
           scene.play();
           bandScenes.forEach((bandScene) => bandScene.play());
@@ -675,7 +785,7 @@ export default function MasterFeedbackView() {
 
   return (
     <ProgramLayout
-      title="Master Feedback"
+      title="Master"
       mode={mode}
       statusText={programOutput?.status_text}
       main={main}

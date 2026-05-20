@@ -444,13 +444,13 @@ export default function SMRFeedbackView() {
         </Section>
       )}
 
-      <SessionControls programId="smr_feedback" programTitle="SMR Feedback" onStarted={handleTrainingStarted} onStopped={handleTrainingStopped} />
+      <SessionControls programId="smr_feedback" programTitle="SMR" onStarted={handleTrainingStarted} onStopped={handleTrainingStopped} />
     </>
   );
 
   return (
     <ProgramLayout
-      title="SMR Feedback"
+      title="SMR"
       mode={mode}
       statusText={programOutput?.status_text}
       calibrating={false}

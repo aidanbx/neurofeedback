@@ -1,6 +1,6 @@
 {
   "id": "alpha_theta_feedback",
-  "title": "Alpha Theta Feedback",
+  "title": "Alpha-Theta",
   "description": "Dual-track alpha and theta rewards with beta-above and slow-wave inhibits.",
   "version": "1.0",
   "runtime": "runtime:AlphaThetaFeedbackRuntime",

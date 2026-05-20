@@ -1,6 +1,6 @@
 {
   "id": "smr_feedback",
-  "title": "SMR Feedback",
+  "title": "SMR",
   "description": "Single-scene SMR reward with theta and hi-beta inhibits plus a sustained reward dwell window.",
   "version": "1.0",
   "runtime": "runtime:SMRFeedbackRuntime",

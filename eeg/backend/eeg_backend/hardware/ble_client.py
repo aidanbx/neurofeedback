@@ -83,18 +83,22 @@ class BLEClient:
         with self.lock:
             state      = self.connection_state
             ble_thread = self._ble_thread
-        if state in {"replay", "scanning", "connecting"}:
+        if state == "replay":
             return
-        if state == "connected":
-            self._disconnect_requested.set()
-            with self.lock:
-                self.status_message = "Disconnect requested…"
+        if state in {"scanning", "connecting", "connected"}:
+            self.request_disconnect()
             return
         if ble_thread is not None and ble_thread.is_alive():
             return
         self._disconnect_requested.clear()
         self._ble_thread = threading.Thread(target=self._run_ble, daemon=True)
         self._ble_thread.start()
+
+    def request_disconnect(self, message: str = "Disconnect requested…") -> None:
+        self._disconnect_requested.set()
+        with self.lock:
+            if self.connection_state != "disconnected":
+                self.status_message = message
 
     def _run_ble(self) -> None:
         asyncio.run(self._ble_stream())
@@ -105,7 +109,25 @@ class BLEClient:
             self.status_message   = f"Scanning for {DEVICE_NAME}…"
         device = None
         for attempt in range(SCAN_RETRIES):
-            devices = await BleakScanner.discover(timeout=SCAN_TIMEOUT)
+            if self.stop_app.is_set() or self._disconnect_requested.is_set():
+                with self.lock:
+                    self.connection_state = "disconnected"
+                    self.status_message   = "Scan cancelled"
+                return
+            try:
+                devices = await asyncio.wait_for(
+                    BleakScanner.discover(timeout=SCAN_TIMEOUT),
+                    timeout=SCAN_TIMEOUT + 2,
+                )
+            except asyncio.TimeoutError:
+                devices = []
+                with self.lock:
+                    self.status_message = "Scan timed out"
+            if self.stop_app.is_set() or self._disconnect_requested.is_set():
+                with self.lock:
+                    self.connection_state = "disconnected"
+                    self.status_message   = "Scan cancelled"
+                return
             device  = next((d for d in devices if d.name == DEVICE_NAME), None)
             if device:
                 break

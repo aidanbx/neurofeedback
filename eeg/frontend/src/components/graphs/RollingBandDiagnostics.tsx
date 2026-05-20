@@ -38,6 +38,7 @@ interface Props {
   showTitle?: boolean;
   combineHiBetaForBeta?: boolean;
   pauseWhenNotRecording?: boolean;
+  lockMode?: boolean;
 }
 
 function valueFor(feature: BandFeature | undefined, mode: BandMetricMode): number {
@@ -154,6 +155,7 @@ export function RollingBandDiagnostics({
   showTitle = true,
   combineHiBetaForBeta = false,
   pauseWhenNotRecording = false,
+  lockMode = false,
 }: Props) {
   const metricsBatch = useDeviceStore((state) => state.metricsBatch);
   const appState = useDeviceStore((state) => state.appState);
@@ -469,14 +471,16 @@ export function RollingBandDiagnostics({
   const settings = (
     <>
       <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 600, letterSpacing: '0.06em' }}>Diagnostics Settings</div>
-      <label style={{ display: 'flex', flexDirection: 'column', gap: 3, fontSize: '0.85em' }}>
-        <span style={{ color: 'var(--muted)' }}>Measure</span>
-        <select value={mode} onChange={(event) => setMode(event.target.value as BandMetricMode)}>
-          {BAND_METRIC_OPTIONS.map(([key, info]) => (
-            <option key={key} value={key}>{info.label}</option>
-          ))}
-        </select>
-      </label>
+      {!lockMode && (
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 3, fontSize: '0.85em' }}>
+          <span style={{ color: 'var(--muted)' }}>Measure</span>
+          <select value={mode} onChange={(event) => setMode(event.target.value as BandMetricMode)}>
+            {BAND_METRIC_OPTIONS.map(([key, info]) => (
+              <option key={key} value={key}>{info.label}</option>
+            ))}
+          </select>
+        </label>
+      )}
       <div style={{ fontSize: 11, color: 'var(--muted)', lineHeight: 1.5 }}>
         {BAND_METRIC_INFO[mode].description}
       </div>

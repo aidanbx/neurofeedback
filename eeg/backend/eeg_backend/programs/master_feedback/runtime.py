@@ -18,8 +18,9 @@ from ..templates import ARTIFACT_GATE, QUALITY_GATE, RewardInhibitRuntime
 
 DEFAULT_BANDS_JSON = json.dumps([
     {"id": "alpha", "label": "Alpha", "lo_hz": 8.0, "hi_hz": 12.0, "role": "reward", "direction": "above", "target_pct": 65.0, "feature": "log_power", "dwell_sec": 0.0},
-    {"id": "delta", "label": "Delta", "lo_hz": 0.5, "hi_hz": 4.0, "role": "inhibit_sfx", "direction": "above", "target_pct": 15.0, "feature": "log_power", "dwell_sec": 2.0},
-    {"id": "beta", "label": "Beta+", "lo_hz": 15.0, "hi_hz": 30.0, "role": "inhibit_sfx", "direction": "above", "target_pct": 15.0, "feature": "log_power", "dwell_sec": 2.0},
+    {"id": "theta", "label": "Theta", "lo_hz": 4.0, "hi_hz": 8.0, "role": "reward", "direction": "above", "target_pct": 65.0, "feature": "log_power", "dwell_sec": 0.0},
+    {"id": "slow", "label": "Slow", "lo_hz": 0.5, "hi_hz": 4.0, "role": "inhibit", "direction": "above", "target_pct": 15.0, "feature": "log_power", "dwell_sec": 0.5},
+    {"id": "beta", "label": "Beta+", "lo_hz": 15.0, "hi_hz": 30.0, "role": "inhibit", "direction": "above", "target_pct": 15.0, "feature": "log_power", "dwell_sec": 0.5},
 ])
 
 
@@ -35,15 +36,15 @@ PRESETS: dict[str, list[dict[str, Any]]] = {
         {"id": "beta", "label": "Beta+", "lo_hz": 15.0, "hi_hz": 30.0, "role": "reward", "direction": "above", "target_pct": 65.0, "feature": "log_power", "dwell_sec": 0.0},
     ],
     "alpha_theta_feedback": [
-        {"id": "alpha", "label": "Alpha", "lo_hz": 8.0, "hi_hz": 12.0, "role": "reward", "direction": "above", "target_pct": 65.0, "feature": "smoothed", "dwell_sec": 0.0},
-        {"id": "theta", "label": "Theta", "lo_hz": 4.0, "hi_hz": 8.0, "role": "reward", "direction": "above", "target_pct": 65.0, "feature": "smoothed", "dwell_sec": 0.0},
-        {"id": "slow", "label": "Slow", "lo_hz": 0.5, "hi_hz": 4.0, "role": "inhibit_sfx", "direction": "above", "target_pct": 15.0, "feature": "log_power", "dwell_sec": 2.0},
-        {"id": "beta", "label": "Beta+", "lo_hz": 15.0, "hi_hz": 30.0, "role": "inhibit_sfx", "direction": "above", "target_pct": 15.0, "feature": "smoothed", "dwell_sec": 2.0},
+        {"id": "alpha", "label": "Alpha", "lo_hz": 8.0, "hi_hz": 12.0, "role": "reward", "direction": "above", "target_pct": 65.0, "feature": "log_power", "dwell_sec": 0.0},
+        {"id": "theta", "label": "Theta", "lo_hz": 4.0, "hi_hz": 8.0, "role": "reward", "direction": "above", "target_pct": 65.0, "feature": "log_power", "dwell_sec": 0.0},
+        {"id": "slow", "label": "Slow", "lo_hz": 0.5, "hi_hz": 4.0, "role": "inhibit", "direction": "above", "target_pct": 15.0, "feature": "log_power", "dwell_sec": 0.5},
+        {"id": "beta", "label": "Beta+", "lo_hz": 15.0, "hi_hz": 30.0, "role": "inhibit", "direction": "above", "target_pct": 15.0, "feature": "log_power", "dwell_sec": 0.5},
     ],
     "smr_feedback": [
-        {"id": "smr", "label": "SMR", "lo_hz": 12.0, "hi_hz": 15.0, "role": "reward", "direction": "above", "target_pct": 27.5, "feature": "smoothed"},
-        {"id": "theta", "label": "Theta", "lo_hz": 4.0, "hi_hz": 8.0, "role": "inhibit", "direction": "above", "target_pct": 15.0, "feature": "smoothed"},
-        {"id": "hibeta", "label": "Hi-Beta", "lo_hz": 20.0, "hi_hz": 30.0, "role": "inhibit", "direction": "above", "target_pct": 15.0, "feature": "smoothed"},
+        {"id": "smr", "label": "SMR", "lo_hz": 12.0, "hi_hz": 15.0, "role": "reward", "direction": "above", "target_pct": 27.5, "feature": "log_power"},
+        {"id": "theta", "label": "Theta", "lo_hz": 4.0, "hi_hz": 8.0, "role": "inhibit", "direction": "above", "target_pct": 15.0, "feature": "log_power"},
+        {"id": "hibeta", "label": "Hi-Beta", "lo_hz": 20.0, "hi_hz": 30.0, "role": "inhibit", "direction": "above", "target_pct": 15.0, "feature": "log_power"},
     ],
     "debug": [
         {"id": "theta", "label": "Theta", "lo_hz": 4.0, "hi_hz": 8.0, "role": "observe", "direction": "above", "target_pct": 50.0, "feature": "log_power"},
@@ -102,7 +103,6 @@ def _coerce_band(raw: dict[str, Any], index: int) -> dict[str, Any]:
         hi = lo + 0.5
     direction = str(raw.get("direction", "above"))
     role = str(raw.get("role", "reward"))
-    feature = str(raw.get("feature", "log_power"))
     return {
         "id": _safe_id(raw.get("id"), f"band_{index + 1}"),
         "label": str(raw.get("label") or f"{lo:g}-{hi:g} Hz"),
@@ -112,7 +112,7 @@ def _coerce_band(raw: dict[str, Any], index: int) -> dict[str, Any]:
         "direction": direction if direction in {"above", "below"} else "above",
         "target_pct": float(np.clip(raw.get("target_pct", raw.get("targetPct", 50.0)), 0.0, 100.0)),
         "dwell_sec": float(np.clip(raw.get("dwell_sec", raw.get("dwellSec", 0.0)), 0.0, 10.0)),
-        "feature": feature if feature in {"log_power", "absolute_power", "smoothed"} else "log_power",
+        "feature": "log_power",
     }
 
 
@@ -129,9 +129,10 @@ class MasterFeedbackRuntime(RewardInhibitRuntime):
 
     def __init__(self) -> None:
         super().__init__()
-        self._preset = "alpha_feedback"
+        self._preset = "alpha_theta_feedback"
         self._bands = _parse_bands(DEFAULT_BANDS_JSON)
         self._bands_json = json.dumps(self._bands)
+        self._dwell_since: dict[str, float | None] = {band["id"]: None for band in self._bands}
         self._init_calibration([band["id"] for band in self._bands])
 
     @property
@@ -140,25 +141,26 @@ class MasterFeedbackRuntime(RewardInhibitRuntime):
 
     def _apply_bands(self, bands: list[dict[str, Any]]) -> None:
         old = self._history
+        old_dwell = self._dwell_since
         self._bands = bands
         self._bands_json = json.dumps(bands)
         self._history = {band["id"]: old.get(band["id"], []) for band in bands}
+        self._dwell_since = {band["id"]: old_dwell.get(band["id"]) for band in bands}
 
     def _value_for_band(self, snap: MetricsSnapshot, band: dict[str, Any]) -> float:
         lo = band["lo_hz"]
         hi = band["hi_hz"]
+        if math.isclose(lo, 15.0, abs_tol=0.01) and math.isclose(hi, 30.0, abs_tol=0.01):
+            return self._combined_beta_log_absolute(snap)
+        named = self._matching_named_band(snap, lo, hi)
+        if named is not None:
+            return named.log_absolute
         pairs = [(f, v) for f, v in zip(snap.psd_freqs, snap.psd_values) if lo <= f <= hi and NumberLike(v)]
         if not pairs:
             return 0.0
         vals = [float(v) for _, v in pairs]
         absolute = float(np.mean(vals))
-        if band["feature"] == "absolute_power":
-            return absolute
-        log_power = math.log(max(absolute, 1e-12))
-        if band["feature"] != "smoothed":
-            return log_power
-        named = self._matching_named_band(snap, lo, hi)
-        return named.smoothed if named is not None else log_power
+        return math.log(max(absolute, 1e-12))
 
     def _matching_named_band(self, snap: MetricsSnapshot, lo: float, hi: float):
         ranges = {
@@ -197,7 +199,7 @@ class MasterFeedbackRuntime(RewardInhibitRuntime):
             else:
                 threshold = self._threshold_from_target(band_id, target, elapsed=elapsed, fallback=value)
                 active = value >= threshold
-            active = self._dwell_active(band_id, threshold, band["direction"], band["dwell_sec"], elapsed, active)
+            active = self._dwell_active(band_id, band["dwell_sec"], elapsed, active)
             low, high = self._range_for_band(band_id, value, elapsed=elapsed)
             drive = self._condition_drive(value, threshold, low, high, band["direction"])
             vals = self._window_values(band_id)
@@ -251,13 +253,31 @@ class MasterFeedbackRuntime(RewardInhibitRuntime):
         status = f"{mode} | {state} | {sum(1 for active in gates.values() if active)}/{len(gates)} gated"
         return ProgramOutput(self.program_id, elapsed, status, asdict(payload))
 
+    def _threshold_from_target(self, band: str, target_pct: float, *, elapsed: float, fallback: float) -> float:
+        vals = self._window_values(band)
+        if not vals:
+            return fallback
+        return float(np.quantile(vals, 1.0 - target_pct / 100.0))
+
     def _threshold_below_target(self, band: str, target_pct: float, *, elapsed: float, fallback: float) -> float:
         vals = self._window_values(band)
         if not vals:
             return fallback
-        if elapsed < self._threshold_window_sec:
-            return self._fixed_threshold(band, fallback)
         return float(np.quantile(vals, target_pct / 100.0))
+
+    def _range_for_band(self, band: str, fallback: float, *, elapsed: float) -> tuple[float, float]:
+        vals = self._window_values(band)
+        if not vals:
+            return (fallback - 0.25, fallback + 0.25)
+        if len(vals) < 3:
+            low = min(vals)
+            high = max(vals)
+        else:
+            low = float(np.quantile(vals, 0.1))
+            high = float(np.quantile(vals, 0.9))
+        if math.isclose(low, high):
+            return (low - 0.1, high + 0.1)
+        return (low, high)
 
     def _prune_history(self, elapsed: float) -> None:
         max_dwell = max((band.get("dwell_sec", 0.0) for band in self._bands), default=0.0)
@@ -276,26 +296,25 @@ class MasterFeedbackRuntime(RewardInhibitRuntime):
     def _dwell_active(
         self,
         band: str,
-        threshold: float,
-        direction: str,
         dwell_sec: float,
         elapsed: float,
         immediate_active: bool,
     ) -> bool:
         if dwell_sec <= 0.0:
+            self._dwell_since[band] = elapsed if immediate_active else None
             return immediate_active
-        samples = [(t, v) for t, v in self._history.get(band, []) if t >= elapsed - dwell_sec - 1e-9]
-        if not samples:
+        if not immediate_active:
+            self._dwell_since[band] = None
             return False
-        oldest = samples[0][0]
-        if elapsed - oldest < dwell_sec:
+        started = self._dwell_since.get(band)
+        if started is None:
+            self._dwell_since[band] = elapsed
             return False
-        avg = float(np.mean([v for _, v in samples]))
-        eps = 1e-9
-        return avg <= threshold + eps if direction == "below" else avg >= threshold - eps
+        return elapsed - started >= dwell_sec - 1e-9
 
     def reset(self) -> None:
         self._history = {band["id"]: [] for band in self._bands}
+        self._dwell_since = {band["id"]: None for band in self._bands}
 
     def set_params(self, params: dict) -> None:
         super().set_params(params)
