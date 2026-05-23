@@ -33,6 +33,10 @@ sessions/
 *.jsonl
 report.html
 
+# Lattice is event-sourced; keep its project events versioned.
+!.lattice/events/
+!.lattice/events/*.jsonl
+
 # Local audio library; keep the tracks directory placeholder.
 web_session_app/static/audio/tracks/**
 !web_session_app/static/audio/tracks/

@@ -1,6 +1,13 @@
 {
   "assigned_to": "agent:codex",
-  "branch_links": [],
+  "branch_links": [
+    {
+      "branch": "preserve/NF-1-current-changes",
+      "linked_at": "2026-05-23T01:48:53Z",
+      "linked_by": "agent:codex",
+      "repo": null
+    }
+  ],
   "comment_count": 0,
   "complexity": null,
   "created_at": "2026-05-20T15:40:51Z",
@@ -10,7 +17,7 @@
   "done_at": null,
   "evidence_refs": [],
   "id": "task_01KS30QZ98TRS9GMYVJ02EZ19N",
-  "last_event_id": "ev_01KS30T7RBTA0EM3KERME86FNM",
+  "last_event_id": "ev_01KS98ARN6F22HTG76JBGJKJY0",
   "last_status_changed_at": "2026-05-20T15:42:05Z",
   "priority": "high",
   "relationships_out": [],
@@ -21,6 +28,6 @@
   "tags": null,
   "title": "Preserve current EEG changes in a worktree",
   "type": "chore",
-  "updated_at": "2026-05-20T15:42:05Z",
+  "updated_at": "2026-05-23T01:48:53Z",
   "urgency": null
 }
