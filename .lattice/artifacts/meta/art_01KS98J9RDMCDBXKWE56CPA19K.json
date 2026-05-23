@@ -1,0 +1,19 @@
+{
+  "created_at": "2026-05-23T01:53:00Z",
+  "created_by": "agent:codex",
+  "custom_fields": {},
+  "id": "art_01KS98J9RDMCDBXKWE56CPA19K",
+  "model": null,
+  "payload": {
+    "content_type": "text/markdown",
+    "file": "art_01KS98J9RDMCDBXKWE56CPA19K.md",
+    "size_bytes": 419
+  },
+  "schema_version": 1,
+  "sensitive": false,
+  "summary": "Completed preservation/worktree setup. Main owns the project-local .lattice directory; Lattice event logs are now versioned despite the repository-wide *.jsonl ignore; preserve/NF-1-current-changes is",
+  "tags": [],
+  "title": "Review findings",
+  "token_usage": null,
+  "type": "note"
+}
