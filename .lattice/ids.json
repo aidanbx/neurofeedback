@@ -4,10 +4,11 @@
     "NF-2": "task_01KSWG6ZM2K2FA27BD5CJRQPHR",
     "NF-3": "task_01KSZCFXMRYX7CB0BDXH0P2VQX",
     "NF-4": "task_01KT47EJ9XEC340STNSA6BH0PA",
-    "NF-5": "task_01KT47MYQA9742ACMG9W0Q2TR4"
+    "NF-5": "task_01KT47MYQA9742ACMG9W0Q2TR4",
+    "NF-6": "task_01KT4BMN47BCZ1YQSVD85CJVV2"
   },
   "next_seqs": {
-    "NF": 6
+    "NF": 7
   },
   "schema_version": 2
 }

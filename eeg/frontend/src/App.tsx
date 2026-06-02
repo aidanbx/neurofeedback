@@ -11,6 +11,7 @@ import { Slider } from './components/controls/Slider';
 import type { AppState, ProgramManifest, SessionMeta } from './contracts';
 
 type SidebarTab = 'settings' | 'programs' | 'sessions';
+const VISIBLE_PROGRAM_IDS = new Set(['debug', 'master_feedback']);
 
 // ── Icons ──────────────────────────────────────────────────────────────────────
 const GearIcon = () => (
@@ -79,6 +80,7 @@ export default function App() {
   const connected = appState?.connection_state === 'connected' || appState?.connection_state === 'replay';
   const connState = appState?.connection_state ?? 'disconnected';
   const connColor = connected ? 'var(--good)' : connState === 'scanning' ? 'var(--fair)' : 'var(--muted)';
+  const visiblePrograms = programs.filter((program) => VISIBLE_PROGRAM_IDS.has(program.id));
 
   return (
     <div style={{ position: 'relative', display: 'flex', height: '100vh', overflow: 'hidden' }}>
@@ -182,10 +184,10 @@ export default function App() {
 
             {sidebarTab === 'programs' && <>
               <div className="nf-section-title">Programs</div>
-              {programs.length === 0 && (
+              {visiblePrograms.length === 0 && (
                 <div style={{ fontSize: 11, color: 'var(--muted)' }}>Waiting for backend…</div>
               )}
-              {programs.map((p) => (
+              {visiblePrograms.map((p) => (
                 <button
                   key={p.id}
                   className={`btn btn-full${programId === p.id ? ' active' : ''}`}

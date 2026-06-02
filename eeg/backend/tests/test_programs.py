@@ -163,15 +163,61 @@ def test_smr_feedback_inhibits_on_hi_beta():
     assert out.payload["inhibit_active"] is True
 
 
-def test_master_feedback_loads_existing_program_presets():
+def test_master_feedback_loads_presets():
     rt = MasterFeedbackRuntime()
-    for preset in ("alpha_feedback", "alpha_theta_beta", "alpha_theta_feedback", "smr_feedback", "debug"):
+    for preset in ("default", "alpha_feedback", "alpha_theta_feedback", "smr_feedback"):
         rt.set_params({"preset": preset, "threshold_window_sec": 1})
         out = rt.tick(make_snap(), 1.2)
         assert out.program_id == "master_feedback"
         assert out.payload["preset"] == preset
         assert len(out.payload["bands"]) > 0
         assert set(out.payload["drives"]) == {band["id"] for band in out.payload["bands"]}
+
+
+def test_master_feedback_presets_match_requested_defaults():
+    rt = MasterFeedbackRuntime()
+
+    rt.set_params({"preset": "default"})
+    out = rt.tick(make_snap(psd_override=[(1.0, 0.2), (5.0, 0.5)]), 1.0)
+    assert [(band["id"], band["label"], band["role"], band["target_pct"], band["dwell_sec"]) for band in out.payload["bands"]] == [
+        ("reward", "reward", "reward", 70.0, 0.0),
+        ("slow_waves", "slow waves", "inhibit", 25.0, 0.5),
+    ]
+
+    rt.set_params({"preset": "alpha_feedback"})
+    out = rt.tick(make_snap(), 1.0)
+    by_id = {band["id"]: band for band in out.payload["bands"]}
+    assert by_id["alpha"]["target_pct"] == 70.0
+    assert by_id["theta"]["role"] == "inhibit"
+    assert by_id["theta"]["target_pct"] == 20.0
+    assert by_id["theta"]["dwell_sec"] == 0.5
+    assert by_id["beta"]["role"] == "inhibit"
+    assert by_id["beta"]["target_pct"] == 20.0
+    assert by_id["beta"]["dwell_sec"] == 0.5
+
+    rt.set_params({"preset": "alpha_theta_feedback"})
+    out = rt.tick(make_snap(), 1.0)
+    by_id = {band["id"]: band for band in out.payload["bands"]}
+    assert by_id["alpha"]["feature"] == "log_power"
+    assert by_id["theta"]["feature"] == "log_power"
+    assert by_id["alpha"]["target_pct"] == 70.0
+    assert by_id["theta"]["target_pct"] == 70.0
+    assert by_id["slow"]["role"] == "inhibit"
+    assert by_id["slow"]["target_pct"] == 20.0
+    assert by_id["slow"]["dwell_sec"] == 0.5
+    assert by_id["beta"]["role"] == "inhibit"
+    assert by_id["beta"]["target_pct"] == 20.0
+    assert by_id["beta"]["dwell_sec"] == 0.5
+
+    rt.set_params({"preset": "smr_feedback"})
+    out = rt.tick(make_snap(), 1.0)
+    by_id = {band["id"]: band for band in out.payload["bands"]}
+    assert by_id["smr"]["feature"] == "log_power"
+    assert by_id["smr"]["target_pct"] == 70.0
+    assert by_id["theta"]["target_pct"] == 20.0
+    assert by_id["theta"]["dwell_sec"] == 0.5
+    assert by_id["hibeta"]["target_pct"] == 20.0
+    assert by_id["hibeta"]["dwell_sec"] == 0.5
 
 
 def test_master_feedback_accepts_custom_band_json():
@@ -189,11 +235,11 @@ def test_master_feedback_accepts_custom_band_json():
 def test_master_feedback_preset_change_overrides_stale_bands_json():
     rt = MasterFeedbackRuntime()
     stale = rt.get_params()["bands_json"]
-    rt.set_params({"preset": "alpha_theta_beta", "bands_json": stale})
+    rt.set_params({"preset": "alpha_theta_feedback", "bands_json": stale})
     out = rt.tick(make_snap(), 5.0)
-    assert out.payload["preset"] == "alpha_theta_beta"
-    assert [band["id"] for band in out.payload["bands"]] == ["alpha", "theta", "beta"]
-    assert all(band["role"] == "reward" for band in out.payload["bands"])
+    assert out.payload["preset"] == "alpha_theta_feedback"
+    assert [band["id"] for band in out.payload["bands"]] == ["alpha", "theta", "slow", "beta"]
+    assert [band["role"] for band in out.payload["bands"]] == ["reward", "reward", "inhibit", "inhibit"]
 
 
 def test_master_feedback_hold_requires_full_window():
@@ -224,7 +270,8 @@ if __name__ == "__main__":
     test_smr_feedback_starts_and_produces_clarity()
     test_smr_feedback_rewards_immediately_when_conditions_match()
     test_smr_feedback_inhibits_on_hi_beta()
-    test_master_feedback_loads_existing_program_presets()
+    test_master_feedback_loads_presets()
+    test_master_feedback_presets_match_requested_defaults()
     test_master_feedback_accepts_custom_band_json()
     test_master_feedback_preset_change_overrides_stale_bands_json()
     test_master_feedback_hold_requires_full_window()

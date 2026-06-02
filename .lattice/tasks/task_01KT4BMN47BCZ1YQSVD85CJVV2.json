@@ -1,0 +1,37 @@
+{
+  "assigned_to": null,
+  "branch_links": [],
+  "comment_count": 2,
+  "complexity": null,
+  "created_at": "2026-06-02T14:26:13Z",
+  "created_by": "agent:codex",
+  "custom_fields": {},
+  "description": null,
+  "done_at": "2026-06-02T14:30:43Z",
+  "evidence_refs": [
+    {
+      "id": "ev_01KT4BWWY1WYQF5W3TXKWHX3HA",
+      "role": "review",
+      "source_type": "comment"
+    },
+    {
+      "id": "art_01KT4BWWY1WYQF5W3TXKWHX3H9",
+      "role": "review",
+      "source_type": "artifact"
+    }
+  ],
+  "id": "task_01KT4BMN47BCZ1YQSVD85CJVV2",
+  "last_event_id": "ev_01KT4BWWY1WYQF5W3TXKWHX3HD",
+  "last_status_changed_at": "2026-06-02T14:30:43Z",
+  "priority": "medium",
+  "relationships_out": [],
+  "reopened_count": 0,
+  "schema_version": 1,
+  "short_id": "NF-6",
+  "status": "done",
+  "tags": null,
+  "title": "Update master feedback presets and program menu",
+  "type": "task",
+  "updated_at": "2026-06-02T14:30:43Z",
+  "urgency": null
+}

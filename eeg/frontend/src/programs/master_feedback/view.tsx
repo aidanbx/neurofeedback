@@ -19,8 +19,8 @@ import { SignalQualitySummary } from '../../components/signal/SignalQualitySumma
 import { ProgramLayout } from '../ProgramLayout';
 
 const PROGRAM_ID = 'master_feedback';
-const BROWN_NOISE_URL = '/audio/tracks/Brown%20Noise.mp3';
 const ALPHA_WAVES_URL = '/audio/tracks/Alpha%20Waves.mp3';
+const CREEK_URL = '/audio/tracks/Creek.mp3';
 
 type Role = 'reward' | 'inhibit' | 'inhibit_sfx' | 'observe';
 type Direction = 'above' | 'below';
@@ -67,11 +67,10 @@ interface HistoryPoint {
 }
 
 const PRESET_LABELS: Record<string, string> = {
-  alpha_feedback: 'Alpha Feedback',
-  alpha_theta_beta: 'Alpha-Theta-Beta',
-  alpha_theta_feedback: 'Alpha Theta Feedback',
-  smr_feedback: 'SMR Feedback',
-  debug: 'Debug',
+  default: 'Default',
+  alpha_feedback: 'Alpha',
+  alpha_theta_feedback: 'Alpha Theta',
+  smr_feedback: 'SMR',
   custom: 'Custom',
 };
 
@@ -164,11 +163,12 @@ function RewardCurvePreview({
 }
 
 const BAND_PRESETS: BandDefinition[] = [
-  { id: 'alpha', label: 'Alpha', lo_hz: 8, hi_hz: 12, role: 'reward', direction: 'above', target_pct: 65, dwell_sec: 0, feature: 'log_power' },
-  { id: 'theta', label: 'Theta', lo_hz: 4, hi_hz: 8, role: 'inhibit', direction: 'above', target_pct: 15, dwell_sec: 0.5, feature: 'log_power' },
-  { id: 'delta', label: 'Delta', lo_hz: 0.5, hi_hz: 4, role: 'inhibit_sfx', direction: 'above', target_pct: 15, dwell_sec: 2, feature: 'log_power' },
-  { id: 'smr', label: 'SMR', lo_hz: 12, hi_hz: 15, role: 'reward', direction: 'above', target_pct: 65, dwell_sec: 0, feature: 'smoothed' },
-  { id: 'beta', label: 'Beta+', lo_hz: 15, hi_hz: 30, role: 'inhibit_sfx', direction: 'above', target_pct: 15, dwell_sec: 2, feature: 'log_power' },
+  { id: 'reward', label: 'reward', lo_hz: 4, hi_hz: 8, role: 'reward', direction: 'above', target_pct: 70, dwell_sec: 0, feature: 'log_power' },
+  { id: 'alpha', label: 'Alpha', lo_hz: 8, hi_hz: 12, role: 'reward', direction: 'above', target_pct: 70, dwell_sec: 0, feature: 'log_power' },
+  { id: 'theta', label: 'Theta', lo_hz: 4, hi_hz: 8, role: 'reward', direction: 'above', target_pct: 70, dwell_sec: 0, feature: 'log_power' },
+  { id: 'slow_waves', label: 'slow waves', lo_hz: 0, hi_hz: 4, role: 'inhibit', direction: 'above', target_pct: 25, dwell_sec: 0.5, feature: 'log_power' },
+  { id: 'smr', label: 'SMR', lo_hz: 12, hi_hz: 15, role: 'reward', direction: 'above', target_pct: 70, dwell_sec: 0, feature: 'log_power' },
+  { id: 'beta', label: 'Beta+', lo_hz: 15, hi_hz: 30, role: 'inhibit', direction: 'above', target_pct: 20, dwell_sec: 0.5, feature: 'log_power' },
 ];
 
 function uniqueBandId(base: string, bands: BandDefinition[]) {
@@ -340,7 +340,7 @@ function namedBarBand(label: string) {
 }
 
 function trackUrlFor(urls: Record<string, string>, band: BandDefinition | BandTelemetry) {
-  return urls[band.id] ?? (band.label.toLowerCase().includes('theta') ? BROWN_NOISE_URL : ALPHA_WAVES_URL);
+  return urls[band.id] ?? (band.label.toLowerCase().includes('theta') ? CREEK_URL : ALPHA_WAVES_URL);
 }
 
 function effectUrlFor(urls: Record<string, string>, band: BandDefinition | BandTelemetry, edge: 'in' | 'out') {
@@ -370,7 +370,6 @@ const inputStyle = {
 export default function MasterFeedbackView() {
   const programOutput = useProgramStore((s) => s.programOutput);
   const metrics = useDeviceStore((s) => s.metrics);
-  const scene = useAudioScene();
   const bandScene0 = useAudioScene();
   const bandScene1 = useAudioScene();
   const bandScene2 = useAudioScene();
@@ -380,13 +379,10 @@ export default function MasterFeedbackView() {
   const bandScenes = useMemo(() => [bandScene0, bandScene1, bandScene2, bandScene3, bandScene4, bandScene5], [bandScene0, bandScene1, bandScene2, bandScene3, bandScene4, bandScene5]);
   const [params, setParams] = useState<Record<string, unknown>>({});
   const [bands, setBands] = useState<BandDefinition[]>([]);
-  const [baseUrl, setBaseUrl] = useState(BROWN_NOISE_URL);
-  const [activeUrl, setActiveUrl] = useState(ALPHA_WAVES_URL);
   const [bandTrackUrls, setBandTrackUrls] = useState<Record<string, string>>({});
   const [effectUrls, setEffectUrls] = useState<Record<string, string>>({});
   const [masterVol, setMasterVol] = useState(0.8);
-  const [baseVol, setBaseVol] = useState(0.12);
-  const [activeVol, setActiveVol] = useState(0.85);
+  const [rewardVol, setRewardVol] = useState(0.85);
   const [fadeTime, setFadeTime] = useState(1.2);
   const [rewardSpread, setRewardSpread] = useState(0.8);
   const [chartWindowSec, setChartWindowSec] = useState(30);
@@ -400,8 +396,8 @@ export default function MasterFeedbackView() {
     .filter((band) => band.role === 'reward')
     .reduce((max, band) => Math.max(max, band.drive), 0);
   const curvedRewardDrive = rewardCurveDrive(rewardDrive, rewardSpread);
-  const audioDrive = payload?.inhibit_active ? 0 : curvedRewardDrive;
-  const preset = String(params.preset ?? payload?.preset ?? 'alpha_feedback');
+  const rawPreset = String(params.preset ?? payload?.preset ?? 'default');
+  const preset = PRESET_LABELS[rawPreset] ? rawPreset : 'default';
   const mode = payload?.mode ?? 'starting';
   const recentHistory = history.filter((point) => history.length === 0 || point.x >= history[history.length - 1].x - chartWindowSec);
   const playBands = bands.filter((band) => band.role === 'reward').slice(0, bandScenes.length);
@@ -437,15 +433,8 @@ export default function MasterFeedbackView() {
   }, []);
 
   useEffect(() => () => {
-    scene.destroy();
     bandScenes.forEach((bandScene) => bandScene.destroy());
-  }, [bandScenes, scene]);
-
-  useEffect(() => {
-    scene.setVolume(masterVol);
-    scene.setTrackVolumes(baseVol, activeVol);
-    scene.setCrossfade(audioDrive, fadeTime);
-  }, [scene, masterVol, baseVol, activeVol, audioDrive, fadeTime]);
+  }, [bandScenes]);
 
   useEffect(() => {
     bandScenes.forEach((bandScene, index) => {
@@ -453,10 +442,10 @@ export default function MasterFeedbackView() {
       const telemetry = band ? telemetryById[band.id] : undefined;
       const drive = telemetry ? rewardCurveDrive(telemetry.drive, rewardSpread) : 0;
       bandScene.setVolume(masterVol);
-      bandScene.setTrackVolumes(0, activeVol);
+      bandScene.setTrackVolumes(0, rewardVol);
       bandScene.setCrossfade(payload?.inhibit_active ? 0 : drive, fadeTime);
     });
-  }, [activeVol, bandScenes, fadeTime, masterVol, payload?.inhibit_active, playBands, rewardSpread, telemetryById]);
+  }, [bandScenes, fadeTime, masterVol, payload?.inhibit_active, playBands, rewardSpread, rewardVol, telemetryById]);
 
   useEffect(() => {
     if (!payload) return;
@@ -497,7 +486,6 @@ export default function MasterFeedbackView() {
 
   const loadScene = async () => {
     await Promise.all([
-      scene.load(baseUrl === 'silence' ? null : baseUrl, activeUrl === 'silence' ? null : activeUrl),
       ...bandScenes.map((bandScene, index) => {
         const band = playBands[index];
         const url = band ? trackUrlFor(bandTrackUrls, band) : 'silence';
@@ -512,10 +500,9 @@ export default function MasterFeedbackView() {
       { label: 'Preset', value: PRESET_LABELS[preset] ?? preset },
       { label: 'State', value: payload.inhibit_active ? 'INHIBIT' : payload.reward_active ? 'reward' : 'neutral', color: payload.inhibit_active ? 'var(--poor)' : payload.reward_active ? 'var(--good)' : 'var(--muted)' },
       { label: 'Reward drive', value: `${Math.round(rewardDrive * 100)}%` },
-      { label: 'Audio drive', value: `${Math.round(audioDrive * 100)}%` },
       { label: 'Quality', value: metrics ? `${metrics.quality_score.toFixed(0)} ${metrics.quality_label}` : '--' },
     ];
-  }, [payload, preset, rewardDrive, audioDrive, metrics]);
+  }, [payload, preset, rewardDrive, metrics]);
 
   const chartBandDefs = telemetryBands.map((band, index) => ({
     key: band.id,
@@ -615,8 +602,6 @@ export default function MasterFeedbackView() {
       </Section>
 
       <Section title="Audio">
-        <AudioTrackPlayer label="Base track" programId={PROGRAM_ID} eventPrefix="main.base_track" selectedUrl={baseUrl} onSelectedUrlChange={setBaseUrl} />
-        <AudioTrackPlayer label="Active track" programId={PROGRAM_ID} eventPrefix="main.active_track" selectedUrl={activeUrl} onSelectedUrlChange={setActiveUrl} />
         {playBands.map((band) => (
           <AudioTrackPlayer
             key={band.id}
@@ -648,8 +633,7 @@ export default function MasterFeedbackView() {
           </div>
         ))}
         <LoggedSlider label="Master volume" min={0} max={100} step={1} value={Math.round(masterVol * 100)} onChange={(value) => setMasterVol(value / 100)} format={(v) => `${v}%`} programId={PROGRAM_ID} eventKey="main.master_volume_pct" />
-        <LoggedSlider label="Base volume" min={0} max={100} step={1} value={Math.round(baseVol * 100)} onChange={(value) => setBaseVol(value / 100)} format={(v) => `${v}%`} programId={PROGRAM_ID} eventKey="main.base_volume_pct" />
-        <LoggedSlider label="Active volume" min={0} max={100} step={1} value={Math.round(activeVol * 100)} onChange={(value) => setActiveVol(value / 100)} format={(v) => `${v}%`} programId={PROGRAM_ID} eventKey="main.active_volume_pct" />
+        <LoggedSlider label="Reward volume" min={0} max={100} step={1} value={Math.round(rewardVol * 100)} onChange={(value) => setRewardVol(value / 100)} format={(v) => `${v}%`} programId={PROGRAM_ID} eventKey="main.reward_volume_pct" />
         <Slider label="Fade time" min={0.2} max={4} step={0.1} value={fadeTime} onChange={setFadeTime} format={(v) => `${v.toFixed(1)}s`} />
         <Slider label="Reward curve" min={1} max={30} step={1} value={Math.round(rewardSpread * 10)} onChange={(v) => setRewardSpread(v / 10)} format={(v) => `${(v / 10).toFixed(1)}`} />
         <RewardCurvePreview spread={rewardSpread} inputDrive={rewardDrive} outputDrive={curvedRewardDrive} />
@@ -665,12 +649,10 @@ export default function MasterFeedbackView() {
         programId={PROGRAM_ID}
         programTitle="Master Feedback"
         onStarted={async () => {
-          scene.play();
           bandScenes.forEach((bandScene) => bandScene.play());
           await loadScene();
         }}
         onStopped={() => {
-          scene.stop();
           bandScenes.forEach((bandScene) => bandScene.stop());
         }}
       />

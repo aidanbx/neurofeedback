@@ -16,42 +16,31 @@ from ...contracts import MetricsSnapshot, ProgramOutput
 from ..templates import ARTIFACT_GATE, QUALITY_GATE, RewardInhibitRuntime
 
 
-DEFAULT_BANDS_JSON = json.dumps([
-    {"id": "alpha", "label": "Alpha", "lo_hz": 8.0, "hi_hz": 12.0, "role": "reward", "direction": "above", "target_pct": 65.0, "feature": "log_power", "dwell_sec": 0.0},
-    {"id": "delta", "label": "Delta", "lo_hz": 0.5, "hi_hz": 4.0, "role": "inhibit_sfx", "direction": "above", "target_pct": 15.0, "feature": "log_power", "dwell_sec": 2.0},
-    {"id": "beta", "label": "Beta+", "lo_hz": 15.0, "hi_hz": 30.0, "role": "inhibit_sfx", "direction": "above", "target_pct": 15.0, "feature": "log_power", "dwell_sec": 2.0},
-])
-
-
 PRESETS: dict[str, list[dict[str, Any]]] = {
-    "alpha_feedback": [
-        {"id": "alpha", "label": "Alpha", "lo_hz": 8.0, "hi_hz": 12.0, "role": "reward", "direction": "above", "target_pct": 65.0, "feature": "log_power", "dwell_sec": 0.0},
-        {"id": "theta", "label": "Theta", "lo_hz": 4.0, "hi_hz": 8.0, "role": "inhibit", "direction": "above", "target_pct": 15.0, "feature": "log_power", "dwell_sec": 0.5},
-        {"id": "beta", "label": "Beta+", "lo_hz": 15.0, "hi_hz": 30.0, "role": "inhibit_sfx", "direction": "above", "target_pct": 15.0, "feature": "log_power", "dwell_sec": 2.0},
+    "default": [
+        {"id": "reward", "label": "reward", "lo_hz": 4.0, "hi_hz": 8.0, "role": "reward", "direction": "above", "target_pct": 70.0, "feature": "log_power", "dwell_sec": 0.0},
+        {"id": "slow_waves", "label": "slow waves", "lo_hz": 0.0, "hi_hz": 4.0, "role": "inhibit", "direction": "above", "target_pct": 25.0, "feature": "log_power", "dwell_sec": 0.5},
     ],
-    "alpha_theta_beta": [
-        {"id": "alpha", "label": "Alpha", "lo_hz": 8.0, "hi_hz": 12.0, "role": "reward", "direction": "above", "target_pct": 65.0, "feature": "log_power", "dwell_sec": 0.0},
-        {"id": "theta", "label": "Theta", "lo_hz": 4.0, "hi_hz": 8.0, "role": "reward", "direction": "above", "target_pct": 65.0, "feature": "log_power", "dwell_sec": 0.0},
-        {"id": "beta", "label": "Beta+", "lo_hz": 15.0, "hi_hz": 30.0, "role": "reward", "direction": "above", "target_pct": 65.0, "feature": "log_power", "dwell_sec": 0.0},
+    "alpha_feedback": [
+        {"id": "alpha", "label": "Alpha", "lo_hz": 8.0, "hi_hz": 12.0, "role": "reward", "direction": "above", "target_pct": 70.0, "feature": "log_power", "dwell_sec": 0.0},
+        {"id": "theta", "label": "Theta", "lo_hz": 4.0, "hi_hz": 8.0, "role": "inhibit", "direction": "above", "target_pct": 20.0, "feature": "log_power", "dwell_sec": 0.5},
+        {"id": "beta", "label": "Beta+", "lo_hz": 15.0, "hi_hz": 30.0, "role": "inhibit", "direction": "above", "target_pct": 20.0, "feature": "log_power", "dwell_sec": 0.5},
     ],
     "alpha_theta_feedback": [
-        {"id": "alpha", "label": "Alpha", "lo_hz": 8.0, "hi_hz": 12.0, "role": "reward", "direction": "above", "target_pct": 65.0, "feature": "smoothed", "dwell_sec": 0.0},
-        {"id": "theta", "label": "Theta", "lo_hz": 4.0, "hi_hz": 8.0, "role": "reward", "direction": "above", "target_pct": 65.0, "feature": "smoothed", "dwell_sec": 0.0},
-        {"id": "slow", "label": "Slow", "lo_hz": 0.5, "hi_hz": 4.0, "role": "inhibit_sfx", "direction": "above", "target_pct": 15.0, "feature": "log_power", "dwell_sec": 2.0},
-        {"id": "beta", "label": "Beta+", "lo_hz": 15.0, "hi_hz": 30.0, "role": "inhibit_sfx", "direction": "above", "target_pct": 15.0, "feature": "smoothed", "dwell_sec": 2.0},
+        {"id": "alpha", "label": "Alpha", "lo_hz": 8.0, "hi_hz": 12.0, "role": "reward", "direction": "above", "target_pct": 70.0, "feature": "log_power", "dwell_sec": 0.0},
+        {"id": "theta", "label": "Theta", "lo_hz": 4.0, "hi_hz": 8.0, "role": "reward", "direction": "above", "target_pct": 70.0, "feature": "log_power", "dwell_sec": 0.0},
+        {"id": "slow", "label": "Slow", "lo_hz": 0.0, "hi_hz": 4.0, "role": "inhibit", "direction": "above", "target_pct": 20.0, "feature": "log_power", "dwell_sec": 0.5},
+        {"id": "beta", "label": "Beta+", "lo_hz": 15.0, "hi_hz": 30.0, "role": "inhibit", "direction": "above", "target_pct": 20.0, "feature": "log_power", "dwell_sec": 0.5},
     ],
     "smr_feedback": [
-        {"id": "smr", "label": "SMR", "lo_hz": 12.0, "hi_hz": 15.0, "role": "reward", "direction": "above", "target_pct": 27.5, "feature": "smoothed"},
-        {"id": "theta", "label": "Theta", "lo_hz": 4.0, "hi_hz": 8.0, "role": "inhibit", "direction": "above", "target_pct": 15.0, "feature": "smoothed"},
-        {"id": "hibeta", "label": "Hi-Beta", "lo_hz": 20.0, "hi_hz": 30.0, "role": "inhibit", "direction": "above", "target_pct": 15.0, "feature": "smoothed"},
-    ],
-    "debug": [
-        {"id": "theta", "label": "Theta", "lo_hz": 4.0, "hi_hz": 8.0, "role": "observe", "direction": "above", "target_pct": 50.0, "feature": "log_power"},
-        {"id": "alpha", "label": "Alpha", "lo_hz": 8.0, "hi_hz": 12.0, "role": "observe", "direction": "above", "target_pct": 50.0, "feature": "log_power"},
-        {"id": "smr", "label": "SMR", "lo_hz": 12.0, "hi_hz": 15.0, "role": "observe", "direction": "above", "target_pct": 50.0, "feature": "log_power"},
-        {"id": "beta", "label": "Beta+", "lo_hz": 15.0, "hi_hz": 30.0, "role": "observe", "direction": "above", "target_pct": 50.0, "feature": "log_power"},
+        {"id": "smr", "label": "SMR", "lo_hz": 12.0, "hi_hz": 15.0, "role": "reward", "direction": "above", "target_pct": 70.0, "feature": "log_power", "dwell_sec": 0.0},
+        {"id": "theta", "label": "Theta", "lo_hz": 4.0, "hi_hz": 8.0, "role": "inhibit", "direction": "above", "target_pct": 20.0, "feature": "log_power", "dwell_sec": 0.5},
+        {"id": "hibeta", "label": "Hi-Beta", "lo_hz": 20.0, "hi_hz": 30.0, "role": "inhibit", "direction": "above", "target_pct": 20.0, "feature": "log_power", "dwell_sec": 0.5},
     ],
 }
+
+
+DEFAULT_BANDS_JSON = json.dumps(PRESETS["default"])
 
 
 @dataclass
@@ -129,7 +118,7 @@ class MasterFeedbackRuntime(RewardInhibitRuntime):
 
     def __init__(self) -> None:
         super().__init__()
-        self._preset = "alpha_feedback"
+        self._preset = "default"
         self._bands = _parse_bands(DEFAULT_BANDS_JSON)
         self._bands_json = json.dumps(self._bands)
         self._init_calibration([band["id"] for band in self._bands])

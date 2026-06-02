@@ -1,0 +1,19 @@
+{
+  "created_at": "2026-06-02T14:30:43Z",
+  "created_by": "agent:codex",
+  "custom_fields": {},
+  "id": "art_01KT4BWWY1WYQF5W3TXKWHX3H9",
+  "model": null,
+  "payload": {
+    "content_type": "text/markdown",
+    "file": "art_01KT4BWWY1WYQF5W3TXKWHX3H9.md",
+    "size_bytes": 528
+  },
+  "schema_version": 1,
+  "sensitive": false,
+  "summary": "Completed preset/menu update. Changed spectral history default window to 30s; filtered Programs menu to Debug and Master Feedback; removed alpha-theta-beta and debug from Master presets; added Default",
+  "tags": [],
+  "title": "Review findings",
+  "token_usage": null,
+  "type": "note"
+}

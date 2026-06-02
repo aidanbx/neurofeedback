@@ -10,8 +10,8 @@
   "settings_schema": {
     "preset": {
       "type": "enum",
-      "default": "alpha_feedback",
-      "options": ["alpha_feedback", "alpha_theta_beta", "alpha_theta_feedback", "smr_feedback", "debug", "custom"],
+      "default": "default",
+      "options": ["default", "alpha_feedback", "alpha_theta_feedback", "smr_feedback", "custom"],
       "label": "Preset",
       "description": "Starting band-condition set to load into the master program."
     },
@@ -35,7 +35,7 @@
     },
     "bands_json": {
       "type": "string",
-      "default": "[{\"id\":\"alpha\",\"label\":\"Alpha\",\"lo_hz\":8,\"hi_hz\":12,\"role\":\"reward\",\"direction\":\"above\",\"target_pct\":65,\"dwell_sec\":0,\"feature\":\"log_power\"},{\"id\":\"delta\",\"label\":\"Delta\",\"lo_hz\":0.5,\"hi_hz\":4,\"role\":\"inhibit_sfx\",\"direction\":\"above\",\"target_pct\":15,\"dwell_sec\":2,\"feature\":\"log_power\"},{\"id\":\"beta\",\"label\":\"Beta+\",\"lo_hz\":15,\"hi_hz\":30,\"role\":\"inhibit_sfx\",\"direction\":\"above\",\"target_pct\":15,\"dwell_sec\":2,\"feature\":\"log_power\"}]",
+      "default": "[{\"id\":\"reward\",\"label\":\"reward\",\"lo_hz\":4,\"hi_hz\":8,\"role\":\"reward\",\"direction\":\"above\",\"target_pct\":70,\"dwell_sec\":0,\"feature\":\"log_power\"},{\"id\":\"slow_waves\",\"label\":\"slow waves\",\"lo_hz\":0,\"hi_hz\":4,\"role\":\"inhibit\",\"direction\":\"above\",\"target_pct\":25,\"dwell_sec\":0.5,\"feature\":\"log_power\"}]",
       "label": "Band definitions",
       "description": "JSON-encoded editable band condition definitions."
     }
