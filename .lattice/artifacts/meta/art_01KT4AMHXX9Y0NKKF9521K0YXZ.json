@@ -1,0 +1,19 @@
+{
+  "created_at": "2026-06-02T14:08:41Z",
+  "created_by": "agent:codex",
+  "custom_fields": {},
+  "id": "art_01KT4AMHXX9Y0NKKF9521K0YXZ",
+  "model": null,
+  "payload": {
+    "content_type": "text/markdown",
+    "file": "art_01KT4AMHXX9Y0NKKF9521K0YXZ.md",
+    "size_bytes": 440
+  },
+  "schema_version": 1,
+  "sensitive": false,
+  "summary": "Implemented spectral history fixes requested by the user. Spectrogram mode now defaults to log_power, the default spectrogram window is 120s, selectable windows are 30/60/120/180s, and retained PSD hi",
+  "tags": [],
+  "title": "Review findings",
+  "token_usage": null,
+  "type": "note"
+}

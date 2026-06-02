@@ -1,0 +1,37 @@
+{
+  "assigned_to": null,
+  "branch_links": [],
+  "comment_count": 1,
+  "complexity": null,
+  "created_at": "2026-06-02T13:16:28Z",
+  "created_by": "agent:codex",
+  "custom_fields": {},
+  "description": null,
+  "done_at": "2026-06-02T14:08:41Z",
+  "evidence_refs": [
+    {
+      "id": "ev_01KT4AMHXX9Y0NKKF9521K0YY0",
+      "role": "review",
+      "source_type": "comment"
+    },
+    {
+      "id": "art_01KT4AMHXX9Y0NKKF9521K0YXZ",
+      "role": "review",
+      "source_type": "artifact"
+    }
+  ],
+  "id": "task_01KT47MYQA9742ACMG9W0Q2TR4",
+  "last_event_id": "ev_01KT4AMHXX9Y0NKKF9521K0YY3",
+  "last_status_changed_at": "2026-06-02T14:08:41Z",
+  "priority": "medium",
+  "relationships_out": [],
+  "reopened_count": 0,
+  "schema_version": 1,
+  "short_id": "NF-5",
+  "status": "done",
+  "tags": null,
+  "title": "Fix spectral history defaults and commit cleanup",
+  "type": "task",
+  "updated_at": "2026-06-02T14:08:41Z",
+  "urgency": null
+}

@@ -1,0 +1,19 @@
+{
+  "created_at": "2026-06-02T13:14:26Z",
+  "created_by": "agent:codex",
+  "custom_fields": {},
+  "id": "art_01KT47H7RJ91KTER691XJ6AXD5",
+  "model": null,
+  "payload": {
+    "content_type": "text/markdown",
+    "file": "art_01KT47H7RJ91KTER691XJ6AXD5.md",
+    "size_bytes": 528
+  },
+  "schema_version": 1,
+  "sensitive": false,
+  "summary": "Completed scoped implementation and verification. Changed eeg/frontend/src/components/graphs/SpectralHistoryPanel.tsx so spectrogram defaults to 10s, available windows are 4/10/20/30s, and PSD history",
+  "tags": [],
+  "title": "Review findings",
+  "token_usage": null,
+  "type": "note"
+}

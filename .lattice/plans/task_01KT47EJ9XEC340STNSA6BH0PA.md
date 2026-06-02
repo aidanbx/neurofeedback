@@ -1,0 +1,2 @@
+# NF-4: Shorten spectrogram window to reduce renderer load
+Reduce the spectral history/spectrogram live workload by shortening the default spectrogram window and limiting retained PSD history in `eeg/frontend/src/components/graphs/SpectralHistoryPanel.tsx`. Keep the change scoped to that component, avoid touching existing unrelated dirty files, then run a focused frontend type/build check if feasible.

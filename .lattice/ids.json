@@ -1,9 +1,13 @@
 {
   "map": {
-    "NF-1": "task_01KS30QZ98TRS9GMYVJ02EZ19N"
+    "NF-1": "task_01KS30QZ98TRS9GMYVJ02EZ19N",
+    "NF-2": "task_01KSWG6ZM2K2FA27BD5CJRQPHR",
+    "NF-3": "task_01KSZCFXMRYX7CB0BDXH0P2VQX",
+    "NF-4": "task_01KT47EJ9XEC340STNSA6BH0PA",
+    "NF-5": "task_01KT47MYQA9742ACMG9W0Q2TR4"
   },
   "next_seqs": {
-    "NF": 2
+    "NF": 6
   },
   "schema_version": 2
 }

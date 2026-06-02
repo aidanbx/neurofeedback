@@ -58,6 +58,9 @@ const AXIS_H = 18;
 const RAIL_H = 34;
 const SPECTRO_H = 380;
 const LOG_STEP = 0.05;
+const DEFAULT_SPECTROGRAM_WINDOW_SEC = 120;
+const MAX_RETAINED_HISTORY_SEC = 180;
+const SPECTROGRAM_WINDOW_OPTIONS_SEC = [30, 60, 120, 180];
 
 const MODE_LABELS: Record<SpectrogramMode, string> = {
   forever_zscore: 'Forever z-score',
@@ -152,6 +155,15 @@ function binSnapshot(sample: PsdSample, binHz: number): BinnedSample {
   return { x: sample.x, freqs, values, logs: values.map(logPower) };
 }
 
+function pruneRecentHistory(samples: PsdSample[], latestX: number): void {
+  const cutoff = latestX - MAX_RETAINED_HISTORY_SEC;
+  let firstKept = 0;
+  while (firstKept < samples.length - 1 && samples[firstKept].x < cutoff) {
+    firstKept += 1;
+  }
+  if (firstKept > 0) samples.splice(0, firstKept);
+}
+
 function baselineStatFor(freq: number, baseline: PSDBaselineAggregate | null): RunningStat | undefined {
   if (!baseline || !baseline.freq_bins.length) return undefined;
   const idx = Math.round((freq - baseline.freq_min_hz) / baseline.freq_bin_hz);
@@ -234,7 +246,7 @@ export function SpectralHistoryPanel({
   const [minFreq, setMinFreq] = useState(0);
   const [maxFreq, setMaxFreq] = useState(70);
   const [binHz, setBinHz] = useState(0.5);
-  const [mode, setMode] = useState<SpectrogramMode>('forever_zscore');
+  const [mode, setMode] = useState<SpectrogramMode>('log_power');
   const [psdScaleMode, setPsdScaleMode] = useState<PsdScaleMode>('log_power');
   const [logMin, setLogMin] = useState(-5);
   const [logMax, setLogMax] = useState(2);
@@ -242,11 +254,11 @@ export function SpectralHistoryPanel({
   const [spectrogramLogMax, setSpectrogramLogMax] = useState(2);
   const [absMin, setAbsMin] = useState(0);
   const [absMax, setAbsMax] = useState(20);
-  const [spectrogramWindowSec, setSpectrogramWindowSec] = useState(60);
+  const [spectrogramWindowSec, setSpectrogramWindowSec] = useState(DEFAULT_SPECTROGRAM_WINDOW_SEC);
   const [cursorHz, setCursorHz] = useState(10);
   const [showBandOverlays, setShowBandOverlays] = useState(defaultShowBandOverlays);
   const [baseline, setBaseline] = useState<PSDBaselineAggregate | null>(null);
-  const [, forceRender] = useState(0);
+  const [historyVersion, setHistoryVersion] = useState(0);
 
   useEffect(() => {
     const load = () => api.getPsdBaseline().then(setBaseline).catch(() => setBaseline(null));
@@ -260,6 +272,7 @@ export function SpectralHistoryPanel({
     if (recording && !prevRecordingRef.current) {
       historyRef.current = [];
       lastXRef.current = 0;
+      setHistoryVersion((version) => version + 1);
     }
     prevRecordingRef.current = recording;
     let changed = false;
@@ -268,19 +281,18 @@ export function SpectralHistoryPanel({
       if (recording && snap.elapsed_sec + 1 < lastXRef.current) {
         historyRef.current = [];
         lastXRef.current = 0;
+        setHistoryVersion((version) => version + 1);
       }
       const x = recording && snap.elapsed_sec > lastXRef.current ? snap.elapsed_sec : lastXRef.current + 0.25;
       lastXRef.current = x;
-      historyRef.current = [
-        ...historyRef.current.slice(-7200),
-        { x, freqs: snap.psd_freqs, values: snap.psd_values },
-      ];
+      historyRef.current.push({ x, freqs: snap.psd_freqs, values: snap.psd_values });
+      pruneRecentHistory(historyRef.current, x);
       changed = true;
     }
-    if (changed) forceRender((count) => count + 1);
+    if (changed) setHistoryVersion((version) => version + 1);
   }, [metricsBatch, recording]);
 
-  const binned = useMemo(() => historyRef.current.map((sample) => binSnapshot(sample, binHz)), [binHz, historyRef.current.length]);
+  const binned = useMemo(() => historyRef.current.map((sample) => binSnapshot(sample, binHz)), [binHz, historyVersion]);
   const latest = useMemo(() => {
     if (!latestMetrics?.psd_freqs.length) return binned[binned.length - 1] ?? null;
     return binSnapshot({ x: latestMetrics.elapsed_sec, freqs: latestMetrics.psd_freqs, values: latestMetrics.psd_values }, binHz);
@@ -659,7 +671,7 @@ export function SpectralHistoryPanel({
       <label style={{ display: 'flex', flexDirection: 'column', gap: 3, fontSize: '0.85em' }}>
         <span style={{ color: 'var(--muted)' }}>Spectrogram window</span>
         <select value={spectrogramWindowSec} onChange={(event) => setSpectrogramWindowSec(Number(event.target.value))}>
-          {[4, 10, 30, 60, 120, 300].map((value) => (
+          {SPECTROGRAM_WINDOW_OPTIONS_SEC.map((value) => (
             <option key={value} value={value}>{value < 60 ? `${value}s` : `${value / 60}m`}</option>
           ))}
         </select>

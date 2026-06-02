@@ -15,6 +15,7 @@ import { SpectralHistoryPanel, type SpectralBandOverlay } from '../../components
 import { NeurofeedbackCharts } from '../../components/graphs/NeurofeedbackCharts';
 import { InhibitStateTimeline } from '../../components/graphs/InhibitStateTimeline';
 import { Waveform } from '../../components/graphs/Waveform';
+import { SignalQualitySummary } from '../../components/signal/SignalQualitySummary';
 import { ProgramLayout } from '../ProgramLayout';
 
 const PROGRAM_ID = 'master_feedback';
@@ -586,7 +587,10 @@ export default function MasterFeedbackView() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <BandEditor bands={bands} onChange={applyBands} />
           {metrics && (
-            <Waveform t={metrics.live_trace_t} y={metrics.live_trace_y} width={800} height={150} color="#55bb88" />
+            <>
+              <SignalQualitySummary metrics={metrics} />
+              <Waveform t={metrics.live_trace_t} y={metrics.live_trace_y} width={800} height={150} color="#55bb88" />
+            </>
           )}
           <SpectralHistoryPanel bandOverlays={overlays} />
         </div>

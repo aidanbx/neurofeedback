@@ -1,0 +1,2 @@
+# NF-5: Fix spectral history defaults and commit cleanup
+Fix the spectral history regression from the previous cap by making binned data update on every history mutation, not only length changes. Also set the spectrogram default mode to log power and expand the retained/default history to roughly two minutes while keeping the workload bounded. Verify with the frontend build, then commit and push the intended code/Lattice changes after inspecting the dirty tree.

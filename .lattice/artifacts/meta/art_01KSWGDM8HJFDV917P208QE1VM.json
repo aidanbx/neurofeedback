@@ -1,0 +1,19 @@
+{
+  "created_at": "2026-05-30T13:15:50Z",
+  "created_by": "agent:codex",
+  "custom_fields": {},
+  "id": "art_01KSWGDM8HJFDV917P208QE1VM",
+  "model": null,
+  "payload": {
+    "content_type": "text/markdown",
+    "file": "art_01KSWGDM8HJFDV917P208QE1VM.md",
+    "size_bytes": 477
+  },
+  "schema_version": 1,
+  "sensitive": false,
+  "summary": "Implemented compact master feedback signal metrics: default active program is now master_feedback, and master_feedback renders quality score, common correlation, slow wave percentage, 60Hz noise perce",
+  "tags": [],
+  "title": "Review findings",
+  "token_usage": null,
+  "type": "note"
+}

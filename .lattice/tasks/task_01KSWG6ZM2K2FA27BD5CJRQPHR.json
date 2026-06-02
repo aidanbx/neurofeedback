@@ -1,0 +1,42 @@
+{
+  "assigned_to": null,
+  "branch_links": [],
+  "comment_count": 2,
+  "complexity": null,
+  "created_at": "2026-05-30T13:12:12Z",
+  "created_by": "agent:codex",
+  "custom_fields": {},
+  "description": null,
+  "done_at": "2026-05-30T13:15:50Z",
+  "evidence_refs": [
+    {
+      "id": "ev_01KSWGD4G3TNFYKPTY2H5K7B51",
+      "role": "review",
+      "source_type": "comment"
+    },
+    {
+      "id": "ev_01KSWGDM8HJFDV917P208QE1VN",
+      "role": "review",
+      "source_type": "comment"
+    },
+    {
+      "id": "art_01KSWGDM8HJFDV917P208QE1VM",
+      "role": "review",
+      "source_type": "artifact"
+    }
+  ],
+  "id": "task_01KSWG6ZM2K2FA27BD5CJRQPHR",
+  "last_event_id": "ev_01KSWGDM8HJFDV917P208QE1VQ",
+  "last_status_changed_at": "2026-05-30T13:15:50Z",
+  "priority": "medium",
+  "relationships_out": [],
+  "reopened_count": 0,
+  "schema_version": 1,
+  "short_id": "NF-2",
+  "status": "done",
+  "tags": null,
+  "title": "Show compact signal quality metrics in master feedback",
+  "type": "task",
+  "updated_at": "2026-05-30T13:15:50Z",
+  "urgency": null
+}
