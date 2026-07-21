@@ -18,11 +18,13 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from ..contracts import BandFeature, MetricsSnapshot, ProgramOutput
 from ..dsp.constants import (
-    ANALYSIS_INTERVAL_SEC, BANDS, LIVE_BUF_SEC, LOGGING_INTERVAL_SEC, SRATE, TRAINING_BANDS,
+    ANALYSIS_INTERVAL_SEC, BANDS, LIVE_BUF_SEC, LIVE_TRACE_SEC, LOGGING_INTERVAL_SEC,
+    SRATE, TRAINING_BANDS,
 )
 from ..dsp.pipeline import (
     apply_view_processing, compute_frame_metrics, compute_psd,
     compute_relative_band_power, compute_view_spectrogram, slice_bounds,
+    StreamingDisplayFilter,
 )
 from ..hardware.ble_client import (
     ADC_MAX_UV, NUM_CHANNELS, BLEClient, parse_notify_bytes,
@@ -78,6 +80,12 @@ class SessionApp:
             deque([0.0] * (SRATE * LIVE_BUF_SEC), maxlen=SRATE * LIVE_BUF_SEC)
             for _ in range(NUM_CHANNELS)
         ]
+        self.display_buffers: list[deque] = [
+            deque([0.0] * (SRATE * LIVE_BUF_SEC), maxlen=SRATE * LIVE_BUF_SEC)
+            for _ in range(NUM_CHANNELS)
+        ]
+        self.display_filters = [StreamingDisplayFilter() for _ in range(NUM_CHANNELS)]
+        self._display_notch_60hz = False
         self.artifact_rejection = False
         self.notch_60hz = False
         self.metric_interval = 0.25  # seconds between WebSocket broadcasts
@@ -175,6 +183,22 @@ class SessionApp:
             rec        = self.recorder.recording
             started_at = self.recorder.recording_started_at
             idx        = self.recorder.record_sample_index
+            notch_60hz = self.notch_60hz
+
+            if notch_60hz != self._display_notch_60hz:
+                self._display_notch_60hz = notch_60hz
+                for display_filter, display_buffer in zip(self.display_filters, self.display_buffers):
+                    display_filter.reset()
+                    display_buffer.clear()
+
+            sample_block = np.asarray(frame.samples, dtype=float)
+            if sample_block.size:
+                for ch in range(NUM_CHANNELS):
+                    filtered = self.display_filters[ch].process(
+                        sample_block[:, ch],
+                        notch_60hz=notch_60hz,
+                    )
+                    self.display_buffers[ch].extend(filtered.tolist())
 
             for s_idx, values in enumerate(frame.samples):
                 for ch, v in enumerate(values):
@@ -199,6 +223,7 @@ class SessionApp:
         with self.lock:
             live        = np.asarray(self.live_buffers[CHANNEL], dtype=float)
             channels    = [np.asarray(buf, dtype=float) for buf in self.live_buffers]
+            display_live = np.asarray(self.display_buffers[CHANNEL], dtype=float)
             recording   = self.recorder.recording
             started_at  = self.recorder.recording_started_at
             should_log  = recording and (now - self.recorder.last_metric_monotonic >= LOGGING_INTERVAL_SEC)
@@ -210,6 +235,10 @@ class SessionApp:
         frame = compute_frame_metrics(live, channels, CHANNEL, art_rej, notch_60hz, ADC_MAX_UV)
         if frame is None:
             return
+
+        trace_count = min(len(display_live), int(LIVE_TRACE_SEC * SRATE))
+        live_trace_y = display_live[-trace_count:].tolist() if trace_count else []
+        live_trace_t = (np.arange(trace_count) / SRATE).tolist()
 
         absolute_d = {
             "Delta": frame.absolute_training.delta,
@@ -271,8 +300,8 @@ class SessionApp:
             psd_values=frame.psd_values,
             raw_psd_freqs=frame.raw_psd_freqs,
             raw_psd_values=frame.raw_psd_values,
-            live_trace_t=frame.live_trace_t,
-            live_trace_y=frame.live_trace_y,
+            live_trace_t=live_trace_t,
+            live_trace_y=live_trace_y,
             bands=band_features,
             params=params,
         )

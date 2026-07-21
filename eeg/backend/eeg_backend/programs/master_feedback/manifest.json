@@ -33,6 +33,48 @@
       "label": "Threshold drive",
       "description": "Reserved threshold drive setting shared with older reward/inhibit runtimes."
     },
+    "quality_gate": {
+      "type": "number",
+      "default": 55,
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "label": "Quality gate",
+      "description": "Minimum quality score allowed for reward and calibration."
+    },
+    "artifact_gate": {
+      "type": "number",
+      "default": 0.3,
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "label": "Artifact gate",
+      "description": "Maximum artifact fraction allowed for reward and calibration."
+    },
+    "gate_rewards_on_quality": {
+      "type": "boolean",
+      "default": true,
+      "label": "Gate reward on quality",
+      "description": "Block reward audio when quality is below the quality gate."
+    },
+    "gate_rewards_on_artifacts": {
+      "type": "boolean",
+      "default": true,
+      "label": "Gate reward on artifacts",
+      "description": "Block reward audio when artifact fraction is at or above the artifact gate."
+    },
+    "gate_inhibits_on_quality": {
+      "type": "boolean",
+      "default": false,
+      "label": "Gate inhibits on quality",
+      "description": "When enabled, low quality also suppresses inhibit activation."
+    },
+    "gate_inhibits_on_artifacts": {
+      "type": "boolean",
+      "default": false,
+      "label": "Gate inhibits on artifacts",
+      "description": "When enabled, artifacts also suppress inhibit activation."
+    },
     "bands_json": {
       "type": "string",
       "default": "[{\"id\":\"reward\",\"label\":\"reward\",\"lo_hz\":4,\"hi_hz\":8,\"role\":\"reward\",\"direction\":\"above\",\"target_pct\":70,\"dwell_sec\":0,\"feature\":\"log_power\"},{\"id\":\"slow_waves\",\"label\":\"slow waves\",\"lo_hz\":0,\"hi_hz\":4,\"role\":\"inhibit\",\"direction\":\"above\",\"target_pct\":25,\"dwell_sec\":0.5,\"feature\":\"log_power\"}]",

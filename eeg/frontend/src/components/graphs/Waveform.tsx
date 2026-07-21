@@ -12,11 +12,8 @@ interface Props {
   label?: string;
 }
 
-function pct(arr: number[], p: number): number {
-  if (arr.length === 0) return 0;
-  const s = [...arr].sort((a, b) => a - b);
-  return s[Math.max(0, Math.floor((p / 100) * (s.length - 1)))];
-}
+const WAVEFORM_Y_MIN_UV = -25;
+const WAVEFORM_Y_MAX_UV = 25;
 
 export function Waveform({ t, y, width = 600, height = 140, color = '#4488ff', label }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -52,11 +49,8 @@ export function Waveform({ t, y, width = 600, height = 140, color = '#4488ff', l
 
     if (tView.length < 2) return;
 
-    const lo = pct(yView, 2);
-    const hi = pct(yView, 98);
-    const pad = Math.max((hi - lo) * 0.15, 0.5);
-    const yMin = lo - pad;
-    const yMax = hi + pad;
+    const yMin = WAVEFORM_Y_MIN_UV;
+    const yMax = WAVEFORM_Y_MAX_UV;
     const ySpan = yMax - yMin || 1;
 
     const tMin = tView[0];

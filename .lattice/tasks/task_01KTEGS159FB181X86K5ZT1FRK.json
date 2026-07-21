@@ -1,0 +1,32 @@
+{
+  "assigned_to": null,
+  "branch_links": [],
+  "comment_count": 1,
+  "complexity": null,
+  "created_at": "2026-06-06T13:08:23Z",
+  "created_by": "agent:codex",
+  "custom_fields": {},
+  "description": null,
+  "done_at": "2026-06-06T13:10:28Z",
+  "evidence_refs": [
+    {
+      "id": "ev_01KTEGWTNMW18N8NHG9Z3R5C5C",
+      "role": "review",
+      "source_type": "comment"
+    }
+  ],
+  "id": "task_01KTEGS159FB181X86K5ZT1FRK",
+  "last_event_id": "ev_01KTEGWTT7JFYWSKQ7MK77PR1P",
+  "last_status_changed_at": "2026-06-06T13:10:28Z",
+  "priority": "medium",
+  "relationships_out": [],
+  "reopened_count": 0,
+  "schema_version": 1,
+  "short_id": "NF-9",
+  "status": "done",
+  "tags": null,
+  "title": "Use streaming filter for live waveform display",
+  "type": "task",
+  "updated_at": "2026-06-06T13:10:28Z",
+  "urgency": null
+}

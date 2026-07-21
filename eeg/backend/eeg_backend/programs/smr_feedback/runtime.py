@@ -69,13 +69,14 @@ class SMRFeedbackRuntime(RewardInhibitRuntime):
 
         theta_inhibit = theta_val >= theta_threshold
         hibeta_inhibit = hibeta_val >= hibeta_threshold
-        inhibit_active = theta_inhibit or hibeta_inhibit
-        reward_active = smr_val >= smr_threshold and not inhibit_active
+        inhibit_active = (theta_inhibit or hibeta_inhibit) and self._inhibit_allowed(snap)
+        reward_allowed = self._reward_allowed(snap)
+        reward_active = reward_allowed and smr_val >= smr_threshold and not inhibit_active
 
         smr_low_bound, smr_high = self._range_for_band("SMR", smr_val, elapsed=elapsed)
         # Keep the "SMR low" state aligned with the reward threshold shown in the chart.
         smr_low = smr_val < smr_threshold
-        raw_clarity = 0.0 if inhibit_active else self._clarity_from_range(smr_val, smr_threshold, smr_low_bound, smr_high)
+        raw_clarity = 0.0 if inhibit_active or not reward_allowed else self._clarity_from_range(smr_val, smr_threshold, smr_low_bound, smr_high)
         clarity = raw_clarity if reward_active else 0.0
         mode = self._mode_for_elapsed(elapsed)
 

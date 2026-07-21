@@ -1,0 +1,32 @@
+{
+  "assigned_to": null,
+  "branch_links": [],
+  "comment_count": 2,
+  "complexity": null,
+  "created_at": "2026-06-06T13:28:26Z",
+  "created_by": "agent:codex",
+  "custom_fields": {},
+  "description": null,
+  "done_at": "2026-06-06T13:35:29Z",
+  "evidence_refs": [
+    {
+      "id": "ev_01KTEJAM7FGWEW8SCSJ3387RET",
+      "role": "review",
+      "source_type": "comment"
+    }
+  ],
+  "id": "task_01KTEHXQVVQGTQT4W3HD1A9WC2",
+  "last_event_id": "ev_01KTEJAMBH73QKN2HFKD0EA854",
+  "last_status_changed_at": "2026-06-06T13:35:29Z",
+  "priority": "medium",
+  "relationships_out": [],
+  "reopened_count": 0,
+  "schema_version": 1,
+  "short_id": "NF-11",
+  "status": "done",
+  "tags": null,
+  "title": "Expose gating controls and plot gate states",
+  "type": "task",
+  "updated_at": "2026-06-06T13:35:29Z",
+  "urgency": null
+}

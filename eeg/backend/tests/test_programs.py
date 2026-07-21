@@ -258,6 +258,44 @@ def test_master_feedback_hold_requires_full_window():
     assert late.payload["bands"][0]["active"] is True
 
 
+def test_master_feedback_artifact_blocks_reward_but_not_inhibit_by_default():
+    rt = MasterFeedbackRuntime()
+    rt.set_params({"preset": "default", "threshold_window_sec": 1})
+    for i in range(6):
+        rt.tick(make_snap(psd_override=[(1.0, 0.1), (5.0, 0.5)]), i * 0.2)
+
+    out = None
+    for elapsed in (1.2, 1.4, 1.6, 1.8):
+        out = rt.tick(
+            make_snap(artifact=0.5, psd_override=[(1.0, 10.0), (5.0, 10.0)]),
+            elapsed,
+        )
+    assert out is not None
+    by_id = {band["id"]: band for band in out.payload["bands"]}
+    assert out.payload["gate_status"]["artifact_pass"] is False
+    assert out.payload["gate_status"]["reward_allowed"] is False
+    assert out.payload["gate_status"]["inhibit_allowed"] is True
+    assert by_id["reward"]["active"] is False
+    assert by_id["reward"]["drive"] == 0.0
+    assert by_id["slow_waves"]["active"] is True
+    assert out.payload["reward_active"] is False
+    assert out.payload["inhibit_active"] is True
+
+
+def test_alpha_feedback_artifact_blocks_reward_drive():
+    rt = AlphaFeedbackRuntime()
+    rt.set_params({"threshold_window_sec": 1})
+    for i in range(6):
+        rt.tick(make_snap(alpha=0.2, theta=-1.0, beta=-1.0, hi_beta=-1.0), i * 0.2)
+
+    out = rt.tick(
+        make_snap(alpha=2.0, theta=-1.0, beta=-1.0, hi_beta=-1.0, artifact=0.5),
+        1.2,
+    )
+    assert out.payload["reward_active"] is False
+    assert out.payload["drives"]["clarity"] == 0.0
+
+
 if __name__ == "__main__":
     test_alpha_feedback_starts_immediately()
     test_alpha_feedback_rolling_after_samples()
@@ -275,4 +313,6 @@ if __name__ == "__main__":
     test_master_feedback_accepts_custom_band_json()
     test_master_feedback_preset_change_overrides_stale_bands_json()
     test_master_feedback_hold_requires_full_window()
+    test_master_feedback_artifact_blocks_reward_but_not_inhibit_by_default()
+    test_alpha_feedback_artifact_blocks_reward_drive()
     print("All tests passed")

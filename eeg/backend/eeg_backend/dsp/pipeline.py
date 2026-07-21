@@ -2,7 +2,10 @@
 from __future__ import annotations
 
 import numpy as np
-from scipy.signal import filtfilt, lfilter, sosfiltfilt, spectrogram, welch
+from scipy.signal import (
+    filtfilt, lfilter, lfilter_zi, sosfilt, sosfilt_zi, sosfiltfilt,
+    spectrogram, welch,
+)
 
 from .constants import (
     ANALYSIS_HP, ANALYSIS_SEC, BANDS, DIAGNOSTIC_SEC, DISPLAY_HP,
@@ -13,6 +16,43 @@ from ..contracts import BandPowers, ProcessedFrame
 
 
 # ── Pure signal utilities ─────────────────────────────────────────────────────
+
+
+class StreamingDisplayFilter:
+    """Causal display filter for live traces; avoids moving-window filtfilt edges."""
+
+    def __init__(self) -> None:
+        self._hp_zi: np.ndarray | None = None
+        self._lp_zi: np.ndarray | None = None
+        self._notch_zi: np.ndarray | None = None
+
+    def reset(self) -> None:
+        self._hp_zi = None
+        self._lp_zi = None
+        self._notch_zi = None
+
+    def process(self, data: np.ndarray, *, notch_60hz: bool) -> np.ndarray:
+        chunk = np.asarray(data, dtype=float)
+        if len(chunk) == 0:
+            return chunk
+
+        if self._hp_zi is None:
+            self._hp_zi = sosfilt_zi(DISPLAY_HP) * chunk[0]
+        filtered, self._hp_zi = sosfilt(DISPLAY_HP, chunk, zi=self._hp_zi)
+
+        if self._lp_zi is None:
+            self._lp_zi = sosfilt_zi(LOWPASS) * filtered[0]
+        filtered, self._lp_zi = sosfilt(LOWPASS, filtered, zi=self._lp_zi)
+
+        if notch_60hz:
+            if self._notch_zi is None:
+                self._notch_zi = lfilter_zi(NOTCH_B, NOTCH_A) * filtered[0]
+            filtered, self._notch_zi = lfilter(NOTCH_B, NOTCH_A, filtered, zi=self._notch_zi)
+        else:
+            self._notch_zi = None
+
+        return np.asarray(filtered)
+
 
 def clean_signal(
     data: np.ndarray,

@@ -5,7 +5,9 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import numpy as np
 from eeg_backend.dsp.constants import SRATE, BANDS
-from eeg_backend.dsp.pipeline import compute_frame_metrics, band_integral, compute_psd
+from eeg_backend.dsp.pipeline import (
+    StreamingDisplayFilter, band_integral, compute_frame_metrics, compute_psd,
+)
 
 
 def make_sine_buffer(freq_hz: float, duration_sec: float = 4.0, amplitude: float = 50.0) -> np.ndarray:
@@ -68,10 +70,29 @@ def test_notch_toggle_changes_line_noise_metric():
     assert max(notched.raw_psd_values) > max(notched.psd_values)
 
 
+def test_streaming_display_filter_is_chunk_stable():
+    t = np.arange(int(6.0 * SRATE)) / SRATE
+    buf = 10.0 * np.sin(2 * np.pi * 10.0 * t)
+    buf += np.where(t > 3.0, 35.0 * (1.0 - np.exp(-(t - 3.0) / 0.2)), 0.0)
+
+    whole_filter = StreamingDisplayFilter()
+    whole = whole_filter.process(buf, notch_60hz=False)
+
+    chunk_filter = StreamingDisplayFilter()
+    chunks = [
+        chunk_filter.process(buf[start:start + 63], notch_60hz=False)
+        for start in range(0, len(buf), 63)
+    ]
+    chunked = np.concatenate(chunks)
+
+    assert np.allclose(chunked, whole)
+
+
 if __name__ == "__main__":
     test_alpha_sine_dominant()
     test_theta_sine_dominant()
     test_compute_frame_metrics_returns_processed_frame()
     test_short_buffer_returns_none()
     test_notch_toggle_changes_line_noise_metric()
+    test_streaming_display_filter_is_chunk_stable()
     print("All DSP tests passed")

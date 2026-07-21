@@ -49,6 +49,21 @@ interface BandTelemetry extends BandDefinition {
   samples: number;
 }
 
+interface GateStatus {
+  quality_score: number;
+  quality_gate: number;
+  quality_pass: boolean;
+  artifact_fraction: number;
+  artifact_gate: number;
+  artifact_pass: boolean;
+  reward_allowed: boolean;
+  inhibit_allowed: boolean;
+  gate_rewards_on_quality: boolean;
+  gate_rewards_on_artifacts: boolean;
+  gate_inhibits_on_quality: boolean;
+  gate_inhibits_on_artifacts: boolean;
+}
+
 interface MasterPayload {
   mode: string;
   preset: string;
@@ -59,11 +74,13 @@ interface MasterPayload {
   inhibit_active: boolean;
   any_active: boolean;
   all_rewards_active: boolean;
+  gate_status?: GateStatus;
 }
 
 interface HistoryPoint {
   x: number;
   bands: Record<string, BandTelemetry>;
+  gates?: GateStatus;
 }
 
 const PRESET_LABELS: Record<string, string> = {
@@ -117,6 +134,16 @@ function clamp(value: number, min: number, max: number) {
 function rewardCurveDrive(value: number, spread: number) {
   const centered = clamp(value, 0, 1) - 0.5;
   return clamp(1 / (1 + Math.exp(-(centered * 8) / Math.max(0.1, spread))), 0, 1);
+}
+
+function paramNumber(params: Record<string, unknown>, key: string, fallback: number) {
+  const value = params[key];
+  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+}
+
+function paramBool(params: Record<string, unknown>, key: string, fallback: boolean) {
+  const value = params[key];
+  return typeof value === 'boolean' ? value : fallback;
 }
 
 function FieldLabel({ children }: { children: string }) {
@@ -386,12 +413,14 @@ export default function MasterFeedbackView() {
   const [fadeTime, setFadeTime] = useState(1.2);
   const [rewardSpread, setRewardSpread] = useState(0.8);
   const [chartWindowSec, setChartWindowSec] = useState(30);
+  const [broadcastHz, setBroadcastHz] = useState(4);
   const [showThresholds, setShowThresholds] = useState(true);
   const historyRef = useRef<HistoryPoint[]>([]);
   const prevGateRef = useRef<Record<string, boolean>>({});
   const [history, setHistory] = useState<HistoryPoint[]>([]);
   const payload = programOutput?.payload as unknown as MasterPayload | undefined;
   const telemetryBands = payload?.bands ?? [];
+  const gateStatus = payload?.gate_status;
   const rewardDrive = telemetryBands
     .filter((band) => band.role === 'reward')
     .reduce((max, band) => Math.max(max, band.drive), 0);
@@ -421,6 +450,11 @@ export default function MasterFeedbackView() {
   const applyBands = (nextBands: BandDefinition[]) => {
     setBands(nextBands);
     applyParams({ preset: 'custom', bands_json: bandJson(nextBands) });
+  };
+
+  const handleBroadcastHz = (hz: number) => {
+    setBroadcastHz(hz);
+    api.setMetricInterval(1 / hz).catch(() => {});
   };
 
   useEffect(() => {
@@ -480,7 +514,7 @@ export default function MasterFeedbackView() {
       acc[band.id] = band;
       return acc;
     }, {});
-    historyRef.current = [...historyRef.current.slice(-900), { x: programOutput.elapsed, bands: byId }];
+    historyRef.current = [...historyRef.current.slice(-900), { x: programOutput.elapsed, bands: byId, gates: payload.gate_status }];
     setHistory([...historyRef.current]);
   }, [payload, programOutput]);
 
@@ -527,6 +561,20 @@ export default function MasterFeedbackView() {
     color: colorForBand(band, index),
     active: (point: HistoryPoint) => Boolean(point.bands[band.id]?.active),
   }));
+  const gateLines = [
+    {
+      key: 'artifact_gate',
+      label: 'artifact',
+      color: '#e13d3d',
+      active: (point: HistoryPoint) => point.gates ? !point.gates.artifact_pass : false,
+    },
+    {
+      key: 'quality_gate',
+      label: 'low quality',
+      color: '#7f1d2d',
+      active: (point: HistoryPoint) => point.gates ? !point.gates.quality_pass : false,
+    },
+  ];
   const overlaySource = telemetryBands.length ? telemetryBands : bands;
   const overlays: SpectralBandOverlay[] = overlaySource.map((band, index) => {
     const telemetry = telemetryBands.find((item) => item.id === band.id);
@@ -549,7 +597,8 @@ export default function MasterFeedbackView() {
           middleContent={
             <InhibitStateTimeline
               points={history}
-              lines={stateLines}
+              lines={[...stateLines, ...gateLines]}
+              height={128}
               windowSec={chartWindowSec}
               emptyLabel="Waiting for gate history..."
             />
@@ -599,6 +648,59 @@ export default function MasterFeedbackView() {
           </select>
         </label>
         <ProgramParamSlider label="Threshold window" min={1} max={300} step={1} value={typeof params.threshold_window_sec === 'number' ? params.threshold_window_sec : 60} onResolved={setParams} programId={PROGRAM_ID} paramKey="threshold_window_sec" format={(v) => v < 60 ? `${v}s` : `${(v / 60).toFixed(1)}m`} />
+      </Section>
+
+      <Section title="Gates">
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 11 }}>
+          <div>
+            <FieldLabel>Quality</FieldLabel>
+            <div style={{ marginTop: 3, color: gateStatus?.quality_pass === false ? '#7f1d2d' : 'var(--text)', fontWeight: 700 }}>
+              {metrics ? metrics.quality_score.toFixed(0) : '--'} / {paramNumber(params, 'quality_gate', 55).toFixed(0)}
+            </div>
+          </div>
+          <div>
+            <FieldLabel>Artifact</FieldLabel>
+            <div style={{ marginTop: 3, color: gateStatus?.artifact_pass === false ? '#e13d3d' : 'var(--text)', fontWeight: 700 }}>
+              {metrics ? `${(metrics.artifact_fraction * 100).toFixed(0)}%` : '--'} / {(paramNumber(params, 'artifact_gate', 0.3) * 100).toFixed(0)}%
+            </div>
+          </div>
+          <div>
+            <FieldLabel>Reward</FieldLabel>
+            <div style={{ marginTop: 3, color: gateStatus?.reward_allowed === false ? 'var(--poor)' : 'var(--good)', fontWeight: 700 }}>
+              {gateStatus ? gateStatus.reward_allowed ? 'allowed' : 'blocked' : '--'}
+            </div>
+          </div>
+          <div>
+            <FieldLabel>Inhibit</FieldLabel>
+            <div style={{ marginTop: 3, color: gateStatus?.inhibit_allowed === false ? 'var(--poor)' : 'var(--good)', fontWeight: 700 }}>
+              {gateStatus ? gateStatus.inhibit_allowed ? 'allowed' : 'blocked' : '--'}
+            </div>
+          </div>
+        </div>
+        <ProgramParamSlider label="Quality gate" min={0} max={100} step={1} value={paramNumber(params, 'quality_gate', 55)} onResolved={setParams} programId={PROGRAM_ID} paramKey="quality_gate" format={(v) => `${v.toFixed(0)}`} />
+        <ProgramParamSlider label="Artifact gate" min={0} max={1} step={0.01} value={paramNumber(params, 'artifact_gate', 0.3)} onResolved={setParams} programId={PROGRAM_ID} paramKey="artifact_gate" format={(v) => `${(v * 100).toFixed(0)}%`} />
+        {[
+          ['gate_rewards_on_quality', 'Block reward on low quality'],
+          ['gate_rewards_on_artifacts', 'Block reward on artifacts'],
+          ['gate_inhibits_on_quality', 'Block inhibits on low quality'],
+          ['gate_inhibits_on_artifacts', 'Block inhibits on artifacts'],
+        ].map(([key, label]) => (
+          <label key={key} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--text)' }}>
+            <input
+              type="checkbox"
+              checked={paramBool(params, key, key === 'gate_rewards_on_quality' || key === 'gate_rewards_on_artifacts')}
+              onChange={(event) => applyParams({ [key]: event.target.checked })}
+            />
+            <span>{label}</span>
+          </label>
+        ))}
+        <Slider
+          label="Broadcast rate"
+          min={1} max={250} step={1}
+          value={broadcastHz}
+          onChange={handleBroadcastHz}
+          format={(v) => `${v} Hz`}
+        />
       </Section>
 
       <Section title="Audio">

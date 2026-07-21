@@ -1,0 +1,32 @@
+{
+  "assigned_to": null,
+  "branch_links": [],
+  "comment_count": 1,
+  "complexity": null,
+  "created_at": "2026-06-06T13:01:56Z",
+  "created_by": "agent:codex",
+  "custom_fields": {},
+  "description": null,
+  "done_at": "2026-06-06T13:03:07Z",
+  "evidence_refs": [
+    {
+      "id": "ev_01KTEGF9S1SA9GEPG0ERGC0DY5",
+      "role": "review",
+      "source_type": "comment"
+    }
+  ],
+  "id": "task_01KTEGD6NFE4EHP852202FG402",
+  "last_event_id": "ev_01KTEGFCJQF4MGVED365N6QWRM",
+  "last_status_changed_at": "2026-06-06T13:03:07Z",
+  "priority": "medium",
+  "relationships_out": [],
+  "reopened_count": 0,
+  "schema_version": 1,
+  "short_id": "NF-7",
+  "status": "done",
+  "tags": null,
+  "title": "Cap waveform display bounds at +/-25uv",
+  "type": "task",
+  "updated_at": "2026-06-06T13:03:07Z",
+  "urgency": null
+}

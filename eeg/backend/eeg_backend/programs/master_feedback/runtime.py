@@ -13,7 +13,7 @@ from typing import Any
 import numpy as np
 
 from ...contracts import MetricsSnapshot, ProgramOutput
-from ..templates import ARTIFACT_GATE, QUALITY_GATE, RewardInhibitRuntime
+from ..templates import RewardInhibitRuntime
 
 
 PRESETS: dict[str, list[dict[str, Any]]] = {
@@ -75,6 +75,7 @@ class MasterFeedbackPayload:
     inhibit_active: bool
     any_active: bool
     all_rewards_active: bool
+    gate_status: dict[str, Any]
 
 
 def _safe_id(value: Any, fallback: str) -> str:
@@ -122,6 +123,7 @@ class MasterFeedbackRuntime(RewardInhibitRuntime):
         self._bands = _parse_bands(DEFAULT_BANDS_JSON)
         self._bands_json = json.dumps(self._bands)
         self._init_calibration([band["id"] for band in self._bands])
+        self._activation_history: dict[str, list[tuple[float, float]]] = {band["id"]: [] for band in self._bands}
 
     @property
     def program_id(self) -> str:  # type: ignore[override]
@@ -132,6 +134,8 @@ class MasterFeedbackRuntime(RewardInhibitRuntime):
         self._bands = bands
         self._bands_json = json.dumps(bands)
         self._history = {band["id"]: old.get(band["id"], []) for band in bands}
+        old_activation = getattr(self, "_activation_history", {})
+        self._activation_history = {band["id"]: old_activation.get(band["id"], []) for band in bands}
 
     def _value_for_band(self, snap: MetricsSnapshot, band: dict[str, Any]) -> float:
         lo = band["lo_hz"]
@@ -165,10 +169,16 @@ class MasterFeedbackRuntime(RewardInhibitRuntime):
 
     def tick(self, snap: MetricsSnapshot, elapsed: float) -> ProgramOutput:
         values = {band["id"]: self._value_for_band(snap, band) for band in self._bands}
-        if snap.quality_score >= QUALITY_GATE and snap.artifact_fraction < ARTIFACT_GATE:
+        for band_id, value in values.items():
+            self._activation_history.setdefault(band_id, []).append((elapsed, value))
+        if self._calibration_allowed(snap):
             for band_id, value in values.items():
                 self._history.setdefault(band_id, []).append((elapsed, value))
             self._prune_history(elapsed)
+        self._prune_activation_history(elapsed)
+        gate_status = self._gate_status(snap)
+        reward_allowed = bool(gate_status["reward_allowed"])
+        inhibit_allowed = bool(gate_status["inhibit_allowed"])
 
         payload_bands: list[BandConditionPayload] = []
         drives: dict[str, float] = {}
@@ -187,8 +197,14 @@ class MasterFeedbackRuntime(RewardInhibitRuntime):
                 threshold = self._threshold_from_target(band_id, target, elapsed=elapsed, fallback=value)
                 active = value >= threshold
             active = self._dwell_active(band_id, threshold, band["direction"], band["dwell_sec"], elapsed, active)
+            if band["role"] == "reward":
+                active = active and reward_allowed
+            elif band["role"] in {"inhibit", "inhibit_sfx"}:
+                active = active and inhibit_allowed
             low, high = self._range_for_band(band_id, value, elapsed=elapsed)
             drive = self._condition_drive(value, threshold, low, high, band["direction"])
+            if band["role"] == "reward" and not reward_allowed:
+                drive = 0.0
             vals = self._window_values(band_id)
             mean = float(np.mean(vals)) if vals else value
             std = float(np.std(vals)) if len(vals) > 1 else 0.0
@@ -235,6 +251,7 @@ class MasterFeedbackRuntime(RewardInhibitRuntime):
             inhibit_active=inhibit_active,
             any_active=any_active,
             all_rewards_active=all_rewards_active,
+            gate_status=gate_status,
         )
         state = "INHIBIT" if inhibit_active else "reward" if reward_active else "neutral"
         status = f"{mode} | {state} | {sum(1 for active in gates.values() if active)}/{len(gates)} gated"
@@ -252,6 +269,13 @@ class MasterFeedbackRuntime(RewardInhibitRuntime):
         max_dwell = max((band.get("dwell_sec", 0.0) for band in self._bands), default=0.0)
         keep_sec = max(self._threshold_window_sec, max_dwell)
         for lst in self._history.values():
+            while len(lst) > 1 and lst[0][0] < elapsed - keep_sec - 1e-9:
+                lst.pop(0)
+
+    def _prune_activation_history(self, elapsed: float) -> None:
+        max_dwell = max((band.get("dwell_sec", 0.0) for band in self._bands), default=0.0)
+        keep_sec = max(max_dwell, 1.0)
+        for lst in self._activation_history.values():
             while len(lst) > 1 and lst[0][0] < elapsed - keep_sec - 1e-9:
                 lst.pop(0)
 
@@ -273,7 +297,12 @@ class MasterFeedbackRuntime(RewardInhibitRuntime):
     ) -> bool:
         if dwell_sec <= 0.0:
             return immediate_active
-        samples = [(t, v) for t, v in self._history.get(band, []) if t >= elapsed - dwell_sec - 1e-9]
+        history = self._activation_history.get(band, [])
+        cutoff = elapsed - dwell_sec
+        samples = [(t, v) for t, v in history if t >= cutoff - 1e-9]
+        previous = [(t, v) for t, v in history if t < cutoff - 1e-9]
+        if previous:
+            samples.insert(0, previous[-1])
         if not samples:
             return False
         oldest = samples[0][0]
@@ -285,6 +314,7 @@ class MasterFeedbackRuntime(RewardInhibitRuntime):
 
     def reset(self) -> None:
         self._history = {band["id"]: [] for band in self._bands}
+        self._activation_history = {band["id"]: [] for band in self._bands}
 
     def set_params(self, params: dict) -> None:
         super().set_params(params)

@@ -79,17 +79,18 @@ class AlphaThetaFeedbackRuntime(RewardInhibitRuntime):
 
         slow_inhibit = self._slow_inhibit_pct > 0.0 and slow_val >= slow_threshold
         beta_inhibit = self._beta_inhibit_pct > 0.0 and beta_val >= beta_threshold
-        inhibit_active = slow_inhibit or beta_inhibit
+        inhibit_active = (slow_inhibit or beta_inhibit) and self._inhibit_allowed(snap)
+        reward_allowed = self._reward_allowed(snap)
         alpha_reward = alpha_val >= alpha_threshold
         theta_reward = theta_val >= theta_threshold
-        reward_active = (alpha_reward or theta_reward) and not inhibit_active
+        reward_active = reward_allowed and (alpha_reward or theta_reward) and not inhibit_active
 
         alpha_low_bound, alpha_high = self._range_for_band("Alpha", alpha_val, elapsed=elapsed)
         theta_low_bound, theta_high = self._range_for_band("Theta", theta_val, elapsed=elapsed)
         alpha_low = alpha_val < alpha_threshold
         theta_low = theta_val < theta_threshold
-        alpha_clarity = 0.0 if inhibit_active else self._clarity_from_range(alpha_val, alpha_threshold, alpha_low_bound, alpha_high)
-        theta_clarity = 0.0 if inhibit_active else self._clarity_from_range(theta_val, theta_threshold, theta_low_bound, theta_high)
+        alpha_clarity = 0.0 if inhibit_active or not reward_allowed else self._clarity_from_range(alpha_val, alpha_threshold, alpha_low_bound, alpha_high)
+        theta_clarity = 0.0 if inhibit_active or not reward_allowed else self._clarity_from_range(theta_val, theta_threshold, theta_low_bound, theta_high)
         if not alpha_reward:
             alpha_clarity = 0.0
         if not theta_reward:

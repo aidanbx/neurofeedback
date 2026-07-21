@@ -74,11 +74,12 @@ class AlphaFeedbackRuntime(RewardInhibitRuntime):
         beta_threshold = self._threshold_from_target("Beta", self._beta_inhibit_pct, elapsed=elapsed, fallback=combined_beta)
         theta_inhibit = theta_val >= theta_threshold
         beta_inhibit = combined_beta >= beta_threshold
-        inhibit_active = theta_inhibit or beta_inhibit
+        inhibit_active = (theta_inhibit or beta_inhibit) and self._inhibit_allowed(snap)
+        reward_allowed = self._reward_allowed(snap)
         alpha_low_bound, alpha_high = self._range_for_band("Alpha", alpha_val, elapsed=elapsed)
         alpha_low = alpha_val <= alpha_low_bound
-        clarity = 0.0 if inhibit_active else self._clarity_from_range(alpha_val, alpha_threshold, alpha_low_bound, alpha_high)
-        reward_active = not inhibit_active and alpha_val >= alpha_threshold
+        clarity = 0.0 if inhibit_active or not reward_allowed else self._clarity_from_range(alpha_val, alpha_threshold, alpha_low_bound, alpha_high)
+        reward_active = reward_allowed and not inhibit_active and alpha_val >= alpha_threshold
         mode = self._mode_for_elapsed(elapsed)
 
         payload = AlphaFeedbackPayload(

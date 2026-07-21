@@ -36,10 +36,18 @@ class RewardInhibitRuntime(ProgramRuntime):
     _DEFAULT_THRESHOLD_WINDOW_SEC   = 180.0
     _DEFAULT_CLARITY_AT_THRESHOLD   = 0.5
     _BOOTSTRAP_THRESHOLD_SEC        = 5.0
+    _DEFAULT_QUALITY_GATE           = QUALITY_GATE
+    _DEFAULT_ARTIFACT_GATE          = ARTIFACT_GATE
 
     def __init__(self) -> None:
         self._threshold_window_sec   = self._DEFAULT_THRESHOLD_WINDOW_SEC
         self._clarity_at_threshold   = self._DEFAULT_CLARITY_AT_THRESHOLD
+        self._quality_gate           = self._DEFAULT_QUALITY_GATE
+        self._artifact_gate          = self._DEFAULT_ARTIFACT_GATE
+        self._gate_rewards_on_quality = True
+        self._gate_rewards_on_artifacts = True
+        self._gate_inhibits_on_quality = False
+        self._gate_inhibits_on_artifacts = False
         self._history: dict[str, list[tuple[float, float]]] = {}
 
     def _init_calibration(self, band_names: list[str]) -> None:
@@ -59,12 +67,47 @@ class RewardInhibitRuntime(ProgramRuntime):
         band_values: dict[str, float],
     ) -> None:
         """Add one rolling-threshold sample if quality gates pass."""
-        if snap.quality_score < QUALITY_GATE or snap.artifact_fraction >= ARTIFACT_GATE:
+        if not self._calibration_allowed(snap):
             return
         for name, val in band_values.items():
             if name in self._history:
                 self._history[name].append((elapsed, val))
         self._prune_history(elapsed)
+
+    def _gate_status(self, snap: MetricsSnapshot) -> dict[str, bool | float]:
+        quality_pass = snap.quality_score >= self._quality_gate
+        artifact_pass = snap.artifact_fraction < self._artifact_gate
+        reward_allowed = (
+            (quality_pass or not self._gate_rewards_on_quality)
+            and (artifact_pass or not self._gate_rewards_on_artifacts)
+        )
+        inhibit_allowed = (
+            (quality_pass or not self._gate_inhibits_on_quality)
+            and (artifact_pass or not self._gate_inhibits_on_artifacts)
+        )
+        return {
+            "quality_score": float(snap.quality_score),
+            "quality_gate": float(self._quality_gate),
+            "quality_pass": bool(quality_pass),
+            "artifact_fraction": float(snap.artifact_fraction),
+            "artifact_gate": float(self._artifact_gate),
+            "artifact_pass": bool(artifact_pass),
+            "reward_allowed": bool(reward_allowed),
+            "inhibit_allowed": bool(inhibit_allowed),
+            "gate_rewards_on_quality": bool(self._gate_rewards_on_quality),
+            "gate_rewards_on_artifacts": bool(self._gate_rewards_on_artifacts),
+            "gate_inhibits_on_quality": bool(self._gate_inhibits_on_quality),
+            "gate_inhibits_on_artifacts": bool(self._gate_inhibits_on_artifacts),
+        }
+
+    def _calibration_allowed(self, snap: MetricsSnapshot) -> bool:
+        return snap.quality_score >= self._quality_gate and snap.artifact_fraction < self._artifact_gate
+
+    def _reward_allowed(self, snap: MetricsSnapshot) -> bool:
+        return bool(self._gate_status(snap)["reward_allowed"])
+
+    def _inhibit_allowed(self, snap: MetricsSnapshot) -> bool:
+        return bool(self._gate_status(snap)["inhibit_allowed"])
 
     def _prune_history(self, elapsed: float) -> None:
         for lst in self._history.values():
@@ -133,9 +176,27 @@ class RewardInhibitRuntime(ProgramRuntime):
             self._threshold_window_sec = float(np.clip(params["calibration_window_sec"], 1.0, 300.0))
         if "clarity_at_threshold" in params:
             self._clarity_at_threshold = float(np.clip(params["clarity_at_threshold"], 0.05, 0.95))
+        if "quality_gate" in params:
+            self._quality_gate = float(np.clip(params["quality_gate"], 0.0, 100.0))
+        if "artifact_gate" in params:
+            self._artifact_gate = float(np.clip(params["artifact_gate"], 0.0, 1.0))
+        if "gate_rewards_on_quality" in params:
+            self._gate_rewards_on_quality = bool(params["gate_rewards_on_quality"])
+        if "gate_rewards_on_artifacts" in params:
+            self._gate_rewards_on_artifacts = bool(params["gate_rewards_on_artifacts"])
+        if "gate_inhibits_on_quality" in params:
+            self._gate_inhibits_on_quality = bool(params["gate_inhibits_on_quality"])
+        if "gate_inhibits_on_artifacts" in params:
+            self._gate_inhibits_on_artifacts = bool(params["gate_inhibits_on_artifacts"])
 
     def get_params(self) -> dict:
         return {
             "threshold_window_sec": self._threshold_window_sec,
             "clarity_at_threshold":   self._clarity_at_threshold,
+            "quality_gate": self._quality_gate,
+            "artifact_gate": self._artifact_gate,
+            "gate_rewards_on_quality": self._gate_rewards_on_quality,
+            "gate_rewards_on_artifacts": self._gate_rewards_on_artifacts,
+            "gate_inhibits_on_quality": self._gate_inhibits_on_quality,
+            "gate_inhibits_on_artifacts": self._gate_inhibits_on_artifacts,
         }

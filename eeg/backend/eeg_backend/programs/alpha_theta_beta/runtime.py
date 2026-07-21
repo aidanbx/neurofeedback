@@ -67,6 +67,10 @@ class AlphaThetaBetaRuntime(RewardInhibitRuntime):
         alpha_clarity = self._clarity_from_range(alpha_val, a_thr, alpha_low, alpha_high)
         theta_clarity = self._clarity_from_range(theta_val, t_thr, theta_low, theta_high)
         beta_clarity = self._clarity_from_range(beta_val, b_thr, beta_low, beta_high)
+        if not self._reward_allowed(snap):
+            alpha_clarity = 0.0
+            theta_clarity = 0.0
+            beta_clarity = 0.0
         mode = self._mode_for_elapsed(elapsed)
 
         payload = AlphaThetaBetaPayload(
